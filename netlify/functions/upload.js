@@ -72,9 +72,12 @@ exports.handler = async (event) => {
       body: JSON.stringify(uploaded),
     };
   } catch (e) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: e.message || String(e) }),
-    };
-  }
-};
+  return {
+    statusCode: 500,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      error: e && e.message ? e.message : String(e)
+    }),
+  };
+}
+
