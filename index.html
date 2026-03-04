@@ -30,7 +30,7 @@ header img{height:44px}
 .dot{padding:4px 12px;border-radius:99px;font-size:.75rem;font-weight:600;background:var(--gray-100);color:var(--gray-500);transition:all .3s}
 .dot.active{background:var(--blue);color:#fff}
 .dot.done{background:var(--green);color:#fff}
-.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-md);border:1px solid var(--gray-200);overflow:hidden;animation:fs .4s ease}
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-md);border:1px solid var(--gray-200);overflow:hidden;animation:fs .4s ease;isolation:isolate}
 @keyframes fs{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 .ch{background:linear-gradient(135deg,var(--navy),#1a3050);padding:24px 32px;position:relative;overflow:hidden}
 .ch::before{content:'';position:absolute;top:-20px;right:-20px;width:120px;height:120px;background:rgba(21,101,216,.2);border-radius:50%}
@@ -435,12 +435,19 @@ function idHTML() {
 function locHTML() {
   return '<div class="fgi full" style="margin-bottom:12px">'
     +'<label class="lbl">Adresse complète <span class="req">*</span></label>'
-    +'<input type="text" id="f-addr" placeholder="12 rue des Fleurs, 75001 Paris" oninput="searchAddr(this.value)">'
+    +'<input type="text" id="f-addr" placeholder="12 rue des Fleurs" oninput="searchAddr(this.value)">'
+    +'</div>'
+    +'<div class="fg" style="margin-bottom:12px">'
+    +'<div class="fgi"><label class="lbl">Code postal <span class="req">*</span></label>'
+    +'<input type="text" id="f-cp" placeholder="75001" maxlength="5" oninput="searchAddr(getVal(\'f-addr\'))"></div>'
+    +'<div class="fgi"><label class="lbl">Ville <span class="req">*</span></label>'
+    +'<input type="text" id="f-ville" placeholder="Paris" oninput="searchAddr(getVal(\'f-addr\'))"></div>'
     +'</div>'
     +'<div class="fgi full">'
-    +'<label class="lbl" style="margin-bottom:8px">Vue satellite — déplacez le marqueur sur votre habitation</label>'
+    +'<label class="lbl" style="margin-bottom:8px">Vue satellite — positionnez le marqueur sur l\'habitation</label>'
+    +'<div class="alert alert-warn" style="margin-bottom:8px">&#128204; <span><strong>Important :</strong> déplacez le marqueur bleu exactement sur le toit de l\'habitation. Ce point GPS sera transmis à KVA Solutions pour l\'étude du dossier.</span></div>'
     +'<div id="map"></div>'
-    +'<div class="map-hint">&#128204; Cliquez sur la carte ou faites glisser le marqueur pour pointer votre habitation</div>'
+    +'<div class="map-hint">&#128204; Cliquez sur la carte ou faites glisser le marqueur pour pointer précisément votre habitation</div>'
     +'</div>';
 }
 
@@ -619,10 +626,14 @@ function initMap() {
 }
 
 function searchAddr(v) {
-  if (v.length<8) return;
+  var cp    = (document.getElementById('f-cp')    ? document.getElementById('f-cp').value.trim()    : '');
+  var ville = (document.getElementById('f-ville') ? document.getElementById('f-ville').value.trim() : '');
+  // Ne déclenche la géolocalisation que si les 3 champs sont remplis
+  if (!v || v.trim().length < 5 || !cp || !ville) return;
+  var query = v.trim() + ' ' + cp + ' ' + ville;
   clearTimeout(window._at);
   window._at = setTimeout(function(){
-    fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(v)+'&limit=1')
+    fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(query)+'&limit=1')
       .then(function(r){ return r.json(); })
       .then(function(d){
         if (d.length && ST.map) {
@@ -711,7 +722,9 @@ function validateRequired() {
     {id:'f-prenom', label:'Prénom du client'},
     {id:'f-tel',    label:'Téléphone du client'},
     {id:'f-email',  label:'Email du client'},
-    {id:'f-addr',   label:'Adresse'}
+    {id:'f-addr',   label:'Adresse'},
+    {id:'f-cp',     label:'Code postal'},
+    {id:'f-ville',  label:'Ville'}
   ];
   base.forEach(function(f){ if (!getVal(f.id)) missing.push(f.label); });
 
@@ -759,7 +772,7 @@ function highlightMissing() {
     if (el) el.style.borderColor = '';
   });
   // Highlight empty required fields
-  var baseFields = ['f-nom','f-prenom','f-tel','f-email','f-addr'];
+  var baseFields = ['f-nom','f-prenom','f-tel','f-email','f-addr','f-cp','f-ville'];
   baseFields.forEach(function(id){
     var el = document.getElementById(id);
     if (el && !el.value.trim()) el.style.borderColor = 'var(--red)';
@@ -932,6 +945,9 @@ function doSaveClose() {
       client_tel:    getVal('f-tel'),
       client_email:  getVal('f-email'),
       client_adresse:getVal('f-addr'),
+      client_cp:     getVal('f-cp'),
+      client_ville:  getVal('f-ville'),
+      client_gps:    (ST.mkr ? ST.mkr.getLatLng().lat.toFixed(6) + ', ' + ST.mkr.getLatLng().lng.toFixed(6) : 'Non renseigné'),
       type_projet:   projChecked,
       // Installation
       pan_marque:    getVal('f-pan-marque'),
@@ -1046,6 +1062,8 @@ function collectFormData() {
     tel:    getVal('f-tel'),
     email:  getVal('f-email'),
     addr:   getVal('f-addr'),
+    cp:     getVal('f-cp'),
+    ville:  getVal('f-ville'),
     projet: Array.from(document.querySelectorAll('.proj-opt input:checked')).map(function(c){ return c.value; }),
     fields: {},
     sto_state: {}
@@ -1092,6 +1110,8 @@ function saveClientProfile(ref) {
     tel:    getVal('f-tel'),
     email:  getVal('f-email'),
     addr:   getVal('f-addr'),
+    cp:     getVal('f-cp'),
+    ville:  getVal('f-ville'),
     projet: Array.from(document.querySelectorAll('.proj-opt input:checked')).map(function(c){ return c.value; }),
     tech:      techFields,
     sto_state: stoState,
@@ -1138,7 +1158,7 @@ function applyClientProfile(profile) {
   if (instNomEl && profile.inst_nom)   instNomEl.value = profile.inst_nom;
   if (instEmEl  && profile.inst_email) instEmEl.value  = profile.inst_email;
   // Champs client communs
-  var fmap = {'f-nom':profile.nom,'f-prenom':profile.prenom,'f-tel':profile.tel,'f-email':profile.email,'f-addr':profile.addr};
+  var fmap = {'f-nom':profile.nom,'f-prenom':profile.prenom,'f-tel':profile.tel,'f-email':profile.email,'f-addr':profile.addr,'f-cp':profile.cp,'f-ville':profile.ville};
   Object.keys(fmap).forEach(function(id){
     var el = document.getElementById(id);
     if (el && fmap[id]) { el.value = fmap[id]; if (id==='f-addr') searchAddr(fmap[id]); }
@@ -1363,10 +1383,13 @@ function buildRecap() {
 
   // Section client
   rows.push(recapSection('&#128101; Client', [
-    recapRow('Nom',       getVal('f-nom') + ' ' + getVal('f-prenom')),
-    recapRow('Téléphone', getVal('f-tel')),
-    recapRow('Email',     getVal('f-email')),
-    recapRow('Adresse',   getVal('f-addr'))
+    recapRow('Nom',        getVal('f-nom') + ' ' + getVal('f-prenom')),
+    recapRow('Téléphone',  getVal('f-tel')),
+    recapRow('Email',      getVal('f-email')),
+    recapRow('Adresse',    getVal('f-addr')),
+    recapRow('Code postal',getVal('f-cp')),
+    recapRow('Ville',      getVal('f-ville')),
+    recapRow('Point GPS',  ST.mkr ? ST.mkr.getLatLng().lat.toFixed(6) + ', ' + ST.mkr.getLatLng().lng.toFixed(6) : '')
   ]));
 
   // Section projet
@@ -1447,7 +1470,7 @@ function countRequired() {
   var total = 0, filled = 0;
 
   // Champs client de base
-  ['f-nom','f-prenom','f-tel','f-email','f-addr'].forEach(function(id){
+  ['f-nom','f-prenom','f-tel','f-email','f-addr','f-cp','f-ville'].forEach(function(id){
     total++;
     if ((getVal(id)||'').trim()) filled++;
   });
