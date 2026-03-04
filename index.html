@@ -818,7 +818,11 @@ function uploadFileToCloudinary(file) {
     body: form
   })
   .then(function(res) {
-    if (!res.ok) throw new Error('Upload failed: ' + res.status);
+    if (!res.ok) {
+  return res.text().then(function(t) {
+    throw new Error('Upload failed: ' + res.status + ' - ' + t);
+  });
+}
     return res.json();
   })
   .then(function(json) {
