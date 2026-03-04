@@ -1,8 +1,0 @@
-{
-  "name": "kva-site",
-  "private": true,
-  "dependencies": {
-    "busboy": "^1.6.0",
-    "cloudinary": "^2.0.0"
-  }
-}
