@@ -9,17 +9,20 @@ cloudinary.config({
 
 function parseMultipart(event) {
   return new Promise((resolve, reject) => {
-    const busboy = new Busboy({ headers: event.headers });
+    const busboy = Busboy({ headers: event.headers });
     const files = [];
 
-    busboy.on("file", (fieldname, file, filename, encoding, mimetype) => {
+    busboy.on("file", (fieldname, file, info) => {
+      const { filename, mimeType } = info || {};
       const chunks = [];
+
       file.on("data", (d) => chunks.push(d));
+      file.on("error", reject);
       file.on("end", () => {
         files.push({
           fieldname,
-          filename,
-          mimetype,
+          filename: filename || "upload",
+          mimetype: mimeType || "application/octet-stream",
           buffer: Buffer.concat(chunks),
         });
       });
@@ -38,7 +41,7 @@ function parseMultipart(event) {
 
 function uploadToCloudinary(file, folder) {
   return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
+    const stream = cloudinary.uploader.upload_stream(
       {
         folder,
         resource_type: "auto",
@@ -50,7 +53,8 @@ function uploadToCloudinary(file, folder) {
         resolve({ url: result.secure_url });
       }
     );
-    uploadStream.end(file.buffer);
+
+    stream.end(file.buffer);
   });
 }
 
@@ -61,23 +65,23 @@ exports.handler = async (event) => {
     }
 
     const files = await parseMultipart(event);
+
     if (!files.length) {
       return { statusCode: 400, body: "No file received" };
     }
 
     const uploaded = await uploadToCloudinary(files[0], "kva-form");
+
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(uploaded),
     };
   } catch (e) {
-  return {
-    statusCode: 500,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      error: e && e.message ? e.message : String(e)
-    }),
-  };
-}
-
+    return {
+      statusCode: 500,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: e && e.message ? e.message : String(e) }),
+    };
+  }
+};
