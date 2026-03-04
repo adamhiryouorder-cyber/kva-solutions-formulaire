@@ -808,27 +808,49 @@ function compressImage(file, maxPx, quality) {
   });
 }
 
-// ── Collecte et compression de toutes les photos uploadées
+// ── Upload d'un fichier vers Netlify Function -> Cloudinary
+function uploadFileToCloudinary(file) {
+  var form = new FormData();
+  form.append('file', file, file.name);
+
+  return fetch('/.netlify/functions/upload', {
+    method: 'POST',
+    body: form
+  })
+  .then(function(res) {
+    if (!res.ok) throw new Error('Upload failed: ' + res.status);
+    return res.json();
+  })
+  .then(function(json) {
+    if (!json || !json.url) throw new Error('Upload response missing url');
+    return json.url;
+  });
+}
+
+// ── Collecte et upload de toutes les photos (renvoie des URLs Cloudinary)
 function collectPhotos() {
   var fileMap = {
-    'fi-l':   'Photo_lointaine',
-    'fi-p':   'Photo_proche',
-    'fi-cal': 'Calepinage',
-    'fi-f':   'Facture_PDL',
-    'fi-t':   'Photo_TGBT',
-    'fi-k':   'Photo_Linky',
+    'fi-l':   'photo_lointaine',
+    'fi-p':   'photo_proche',
+    'fi-cal': 'photo_calepinage',
+    'fi-f':   'facture_pdl',
+    'fi-t':   'photo_tgbt',
+    'fi-k':   'photo_linky',
   };
+
   var promises = [];
+
   Object.keys(fileMap).forEach(function(id) {
     var inp = document.getElementById(id);
     if (inp && inp.files && inp.files[0]) {
       promises.push(
-        compressImage(inp.files[0], 900, 0.75).then(function(res) {
-          return { key: fileMap[id], data: res };
+        uploadFileToCloudinary(inp.files[0]).then(function(url) {
+          return { key: fileMap[id], url: url };
         })
       );
     }
   });
+
   return Promise.all(promises);
 }
 
@@ -940,11 +962,10 @@ function doSaveClose() {
       photo_linky:     '',
     };
 
-    // Injecter les photos compressées
-    photos.forEach(function(p) {
-      if (params.hasOwnProperty(p.key.toLowerCase())) params[p.key.toLowerCase()] = p.data.b64;
-      else params[p.key] = p.data.b64;
-    });
+ // Injecter les URLs Cloudinary
+photos.forEach(function(p) {
+  params[p.key] = p.url;
+});
 
     // ── Envoi email 1 : KVA interne (récap complet + photos)
     return emailjs.send(EJS.serviceId, EJS.templateKva, params)
