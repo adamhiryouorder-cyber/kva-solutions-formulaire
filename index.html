@@ -508,33 +508,48 @@ function buildForm() {
   html += sec('&#128100; Informations personnelles', idHTML());
   html += sec('&#128205; Localisation', locHTML());
 
-  if (isUrb) {
-    html += sec('&#9728;&#65039; Installation photovoltaïque', panUrbHTML(isRac || isCon));
-    html += sec('&#128247; Photos de la propriété', photoUrbHTML());
-  }
-  if (isRac) {
+  // ── Modification d'installation (rac ou con uniquement)
+  if (isRac || isCon) {
     html += sec('&#128268; Modification d\'installation', augPuissanceHTML());
-    if (!isUrb) html += sec('&#9728;&#65039; Panneaux &amp; onduleurs', panRacHTML());
-    else        html += sec('&#9889; Onduleurs', ondHTML());
-    if (!isCon) html += sec('&#128267; Stockage', stoHTML('rac'));
+  }
+
+  // ── Matériel unifié : panneaux + onduleurs + batteries dans une seule section
+  // Logique identique à l'original, mais regroupée + batteries intégrées
+  var materielBody = '';
+  if (isUrb) {
+    // Panneaux (style urb, avec champ WC si rac ou con)
+    materielBody += panUrbHTML(isRac || isCon);
+    // Onduleurs uniquement si raccordement
+    if (isRac) materielBody += ondHTML();
+  } else if (isRac || isCon) {
+    // Panneaux + onduleurs ensemble (pas d'urb)
+    materielBody += panRacHTML();
+  }
+  // Batteries : dans la même section
+  if (isRac && !isCon) materielBody += stoHTML('rac');
+  if (isCon)           materielBody += stoHTML('con');
+
+  if (materielBody) {
+    html += sec('&#9728;&#65039; Installation photovoltaïque &amp; matériel', materielBody);
+  }
+
+  // ── Sections spécifiques raccordement / consuel
+  if (isRac) {
     html += sec('&#128203; Informations électriques', elecHTML());
-    html += sec('&#128247; Documents et photos', photoRacHTML());
   }
   if (isCon) {
-    if (!isRac) {
-      html += sec('&#128268; Modification d\'installation', augPuissanceHTML());
-      if (!isUrb) html += sec('&#9728;&#65039; Panneaux &amp; onduleurs', panRacHTML());
-    }
-    html += sec('&#128267; Stockage', stoHTML('con'));
     html += sec('&#128296; Protection &amp; installation (Consuel)', consHTML(!isRac));
   }
-  // Urbanisme question : sauf si les 3 services sont sélectionnés (KVA gère tout)
+
+  // ── Démarche urbanisme (question KVA)
   if (!isFul && (isRac || isCon)) {
     var urbSvcType = isRac ? 'rac' : 'con';
     html += sec('&#127968; Démarche urbanisme', urbConsentHTML(urbSvcType, isUrb));
   }
 
-  // Section pièces jointes libres — toujours affichée quel que soit le service
+  // ── Pièces jointes et photos — toujours en fin de formulaire
+  if (isUrb) html += sec('&#128247; Photos de la propriété', photoUrbHTML());
+  if (isRac) html += sec('&#128247; Documents et photos', photoRacHTML());
   html += sec('&#128204; Pièces jointes complémentaires', photoLibreHTML());
 
   document.getElementById('fcont').innerHTML = html;
