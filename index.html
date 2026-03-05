@@ -555,9 +555,10 @@ function buildForm() {
   }
 
   // ── Démarche urbanisme (question KVA)
-  if (!isFul && (isRac || isCon)) {
+  // Si urbanisme est sélectionné comme démarche, KVA est forcément chargée → pas de question
+  if (!isFul && !isUrb && (isRac || isCon)) {
     var urbSvcType = isRac ? 'rac' : 'con';
-    html += sec('&#127968; Démarche urbanisme', urbConsentHTML(urbSvcType, isUrb));
+    html += sec('&#127968; Démarche urbanisme', urbConsentHTML(urbSvcType, false));
   }
 
   // ── Pièces jointes et photos — toujours en fin de formulaire
@@ -1240,8 +1241,8 @@ function validateRequired() {
     if (!getVal('f-bat-auto')) missing.push('Fonctionnement autonome de l\'installation');
   }
 
-  // 9. Démarche urbanisme (question obligatoire si rac/con sans full)
-  if (!isFul && (isRac || isCon)) {
+  // 9. Démarche urbanisme (question obligatoire si rac/con sans full ET sans urb)
+  if (!isFul && !isUrb && (isRac || isCon)) {
     var urbSvcType = isRac ? 'rac' : 'con';
     var urbHid = document.getElementById('f-urb-kva-' + urbSvcType);
     if (!urbHid || !urbHid.value) {
@@ -1429,6 +1430,7 @@ function doSaveClose() {
   var ref       = getVal('inst-ref') || mkRef();
   var svcLabels = {urb:'Urbanisme',rac:'Raccordement',con:'Consuel',ful:'Dossier Complet'};
   var svcLabel = getSvcLabel();
+  var isUrb = ST.svcs.indexOf('urb') >= 0;
 
   // Vérification config EmailJS
   if (EJS.publicKey === 'VOTRE_PUBLIC_KEY') {
@@ -1494,7 +1496,7 @@ function doSaveClose() {
       // Branchement (commun con/rac)
       branchement:   getVal('f-branchement'),
       // Urbanisme consent
-      urb_kva: (getVal('f-urb-kva-rac') || getVal('f-urb-kva-con')),
+      urb_kva: isUrb ? 'Oui — KVA Solutions' : (getVal('f-urb-kva-rac') || getVal('f-urb-kva-con')),
       urb_date:      getVal('f-urb-date'),
       urb_ano:       getVal('f-urb-ano'),
       // Augmentation de puissance
@@ -2017,8 +2019,8 @@ function buildRecap() {
   ].filter(function(r){ return r; });
   if (consRows.length) rows.push(recapSection('&#128296; Consuel', consRows));
 
-  // Section Urbanisme consent (hors dossier complet)
-  if (!(ST.svcs.indexOf('urb') >= 0 && ST.svcs.indexOf('rac') >= 0 && ST.svcs.indexOf('con') >= 0)) {
+  // Section Urbanisme consent (hors dossier complet et hors urbanisme sélectionné)
+  if (!isFul && !isUrb && (ST.svcs.indexOf('rac') >= 0 || ST.svcs.indexOf('con') >= 0)) {
     var urbSvcType = ST.svcs.indexOf('rac') >= 0 ? 'rac' : 'con';
     var urbKva = getVal('f-urb-kva-'+urbSvcType);
     if (urbKva) {
