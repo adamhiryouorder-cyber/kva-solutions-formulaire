@@ -815,6 +815,8 @@ function photoLibreHTML() {
     +'<div id="libre-names" style="display:flex;flex-direction:column;gap:4px"></div>'
     +'</div>';
 }
+
+function initMap() {
   var el = document.getElementById('map');
   if (!el) return;
   if (ST.map) { ST.map.remove(); ST.map=null; }
