@@ -367,6 +367,19 @@ function goStep(n) {
     if (!instEmail) { alert("L'email de l'installateur est obligatoire."); document.getElementById('inst-email').focus(); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(instEmail)) { alert("L'adresse email de l'installateur n'est pas valide."); document.getElementById('inst-email').focus(); return; }
   }
+  if (n===2) {
+    var fcontClear = document.getElementById('fcont');
+    if (fcontClear) {
+      ST.savedFields = ST.savedFields || {};
+      fcontClear.querySelectorAll('input, select, textarea').forEach(function(el){
+        if (el.id) ST.savedFields[el.id] = el.value;
+      });
+      var projChecked = [];
+      document.querySelectorAll('.proj-opt input:checked').forEach(function(cb){ projChecked.push(cb.value); });
+      ST.savedProj = projChecked;
+      fcontClear.innerHTML = '';
+    }
+  }
   if (n===3 && ST.svcs.length === 0) { alert('Veuillez sélectionner au moins un service.'); return; }
   if (n===4) {
     var missing = validateRequired();
@@ -555,6 +568,19 @@ function buildForm() {
   document.getElementById('fcont').innerHTML = html;
   setTimeout(function(){
     initMap();
+    // Restaurer les valeurs sauvegardées avant le changement de démarche
+    if (ST.savedFields) {
+      Object.keys(ST.savedFields).forEach(function(id){
+        var el = document.getElementById(id);
+        if (el && ST.savedFields[id] !== undefined && ST.savedFields[id] !== '') el.value = ST.savedFields[id];
+      });
+      if (ST.savedProj && ST.savedProj.length) {
+        document.querySelectorAll('.proj-opt input').forEach(function(cb){
+          if (ST.savedProj.indexOf(cb.value) >= 0) cb.checked = true;
+        });
+      }
+      restoreAllToggleStates();
+    }
     var refVal = document.getElementById('inst-ref') ? document.getElementById('inst-ref').value.trim().toUpperCase() : '';
     if (refVal) {
       var profile = loadClientProfile(refVal);
