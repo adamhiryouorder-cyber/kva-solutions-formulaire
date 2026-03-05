@@ -534,6 +534,9 @@ function buildForm() {
     html += sec('&#127968; Démarche urbanisme', urbConsentHTML(urbSvcType, isUrb));
   }
 
+  // Section pièces jointes libres — toujours affichée quel que soit le service
+  html += sec('&#128204; Pièces jointes complémentaires', photoLibreHTML());
+
   document.getElementById('fcont').innerHTML = html;
   setTimeout(function(){
     initMap();
@@ -800,8 +803,18 @@ function consHTML(includeBranchement) {
     +'</div>';
 }
 
-// ── Map
-function initMap() {
+function photoLibreHTML() {
+  return '<div class="alert" style="margin-bottom:12px">&#128196; <span>Joignez tout document complémentaire utile à KVA Solutions : bon de commande, attestation RGE, schéma, note de calcul, etc. <span style="color:var(--gray-500)">(optionnel — plusieurs fichiers acceptés)</span></span></div>'
+    +'<div class="ua" id="ua-libre" onclick="document.getElementById(\'fi-libre\').click()" style="padding:28px 20px">'
+    +'<input type="file" id="fi-libre" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" multiple onchange="prevLibre()" style="display:none">'
+    +'<div class="u-ico">&#128196;</div>'
+    +'<div class="u-txt">Cliquez pour sélectionner des fichiers<br><strong>Images, PDF, Word, Excel</strong> — sélection multiple possible</div>'
+    +'</div>'
+    +'<div id="libre-list" style="margin-top:10px;display:none">'
+    +'<div style="font-size:.78rem;font-weight:700;color:var(--gray-700);margin-bottom:6px">Fichiers sélectionnés :</div>'
+    +'<div id="libre-names" style="display:flex;flex-direction:column;gap:4px"></div>'
+    +'</div>';
+}
   var el = document.getElementById('map');
   if (!el) return;
   if (ST.map) { ST.map.remove(); ST.map=null; }
@@ -857,7 +870,26 @@ function prevFile(iid, aid, pid) {
   }
 }
 
-// ── Storage toggle
+// ── Upload preview multi-fichiers libres
+function prevLibre() {
+  var inp = document.getElementById('fi-libre');
+  if (!inp || !inp.files || inp.files.length === 0) return;
+  var zone = document.getElementById('ua-libre');
+  var list = document.getElementById('libre-list');
+  var names = document.getElementById('libre-names');
+  if (zone) zone.classList.add('ok');
+  if (list) list.style.display = 'block';
+  if (names) {
+    names.innerHTML = '';
+    Array.from(inp.files).forEach(function(f) {
+      var item = document.createElement('div');
+      item.style.cssText = 'font-size:.82rem;color:var(--navy);background:var(--blue-pale);border:1px solid rgba(21,101,216,.15);border-radius:6px;padding:6px 12px;display:flex;align-items:center;gap:8px';
+      item.innerHTML = '&#10003; <span>' + f.name + '</span> <span style="color:var(--gray-500);font-size:.75rem">(' + (f.size > 1048576 ? (f.size/1048576).toFixed(1)+' Mo' : Math.round(f.size/1024)+' Ko') + ')</span>';
+      names.appendChild(item);
+    });
+  }
+  setTimeout(updateProgress, 100);
+}
 function togSto(t, show, el) {
   el.parentElement.querySelectorAll('.ro').forEach(function(r){ r.classList.remove('sel'); });
   el.classList.add('sel');
@@ -1250,6 +1282,18 @@ function collectPhotos() {
     }
   });
 
+  // Pièces jointes libres (multi-fichiers)
+  var libreInp = document.getElementById('fi-libre');
+  if (libreInp && libreInp.files && libreInp.files.length > 0) {
+    Array.from(libreInp.files).forEach(function(file, i) {
+      promises.push(
+        uploadFileToCloudinary(file).then(function(url) {
+          return { key: 'att_libre_' + i, url: url, name: file.name };
+        })
+      );
+    });
+  }
+
   return Promise.all(promises);
 }
 
@@ -1387,12 +1431,19 @@ function doSaveClose() {
       photo_tgbt:      '',
       photo_linky:     '',
       photo_ano:       '',
+      att_list:        '',
     };
 
  // Injecter les URLs Cloudinary
 photos.forEach(function(p) {
   params[p.key] = p.url;
 });
+
+// Construire att_list à partir des fichiers libres uploadés
+var libreItems = photos.filter(function(p){ return p.key && p.key.indexOf('att_libre_') === 0; });
+if (libreItems.length > 0) {
+  params.att_list = libreItems.map(function(p){ return (p.name || p.key) + ' : ' + p.url; }).join('\n');
+}
 
     // ── Envoi email 1 : KVA interne (récap complet + photos)
     return emailjs.send(EJS.serviceId, EJS.templateKva, params)
@@ -1910,16 +1961,24 @@ function buildRecap() {
   // Photos uploadées
   var photoLabels = {
     'ua-l':'Photo lointaine','ua-p':'Photo proche','ua-cal':'Calepinage (plan/photo)',
-    'ua-f':'Facture PDL','ua-t':'Photo TGBT','ua-k':'Photo Linky/CCPI'
+    'ua-f':'Facture PDL','ua-t':'Photo TGBT','ua-k':'Photo Linky/CCPI',
+    'ua-ano':'ANO / Récépissé'
   };
   var photosOk = [];
   Object.keys(photoLabels).forEach(function(id){
     var el = document.getElementById(id);
     if (el && el.classList.contains('ok')) photosOk.push(photoLabels[id]);
   });
-  if (photosOk.length) rows.push(recapSection('&#128247; Documents joints', [
-    recapRow('Fichiers uploadés', photosOk.join(' • '))
-  ]));
+  // Pièces jointes libres
+  var libreInp = document.getElementById('fi-libre');
+  var libreNames = [];
+  if (libreInp && libreInp.files && libreInp.files.length > 0) {
+    Array.from(libreInp.files).forEach(function(f){ libreNames.push(f.name); });
+  }
+  var docRows = [];
+  if (photosOk.length) docRows.push(recapRow('Fichiers requis uploadés', photosOk.join(' • ')));
+  if (libreNames.length) docRows.push(recapRow('Pièces jointes complémentaires', libreNames.join(' • ')));
+  if (docRows.length) rows.push(recapSection('&#128247; Documents joints', docRows));
 
   var content = rows.filter(function(r){ return r; }).join('');
   document.getElementById('recap-content').innerHTML = content ||
