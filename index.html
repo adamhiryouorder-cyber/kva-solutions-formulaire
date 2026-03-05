@@ -74,6 +74,7 @@ select{cursor:pointer}
 .ua{border:2px dashed var(--gray-300);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:all .25s;background:var(--gray-50)}
 .ua:hover{border-color:var(--blue);background:var(--blue-pale)}
 .ua.ok{border-color:var(--green);background:rgba(16,185,129,.05)}
+.ua.req-err{border-color:var(--red);background:rgba(239,68,68,.04)}
 .u-ico{font-size:2rem;margin-bottom:8px}
 .u-txt{font-size:.82rem;color:var(--gray-500)}
 .u-txt strong{color:var(--blue)}
@@ -388,45 +389,15 @@ function goStep(n) {
     document.getElementById('ptxt').textContent = stepLabels[n] || 'Étape '+n;
   }
   if (n===3) {
-    // Si on revient depuis l'étape 4, sauvegarder les valeurs avant de reconstruire le formulaire
-    var savedVals = {};
-    var savedSto  = {};
-    var fcont = document.getElementById('fcont');
-    if (fcont && fcont.innerHTML.trim()) {
-      document.querySelectorAll('#fcont input[id], #fcont select[id], #fcont textarea[id]').forEach(function(el){
-        savedVals[el.id] = el.value;
-      });
-      ['rac','con'].forEach(function(t){
-        var box = document.getElementById('sto-'+t);
-        if (box) savedSto[t] = (box.style.display !== 'none');
-      });
-    }
-    buildForm();
-    // Restaurer les valeurs après reconstruction
-    if (Object.keys(savedVals).length > 0) {
-      setTimeout(function(){
-        Object.keys(savedVals).forEach(function(id){
-          var el = document.getElementById(id);
-          if (el && savedVals[id] !== undefined) el.value = savedVals[id];
-        });
-        Object.keys(savedSto).forEach(function(t){
-          var show = savedSto[t];
-          var box  = document.getElementById('sto-'+t);
-          if (box) box.style.display = show ? 'block' : 'none';
-          document.querySelectorAll('.rg .ro').forEach(function(btn){
-            var oc = btn.getAttribute('onclick') || '';
-            if (oc.indexOf("'" + t + "'") !== -1) {
-              btn.classList.remove('sel');
-              if (show  && oc.indexOf(',true,')  !== -1) btn.classList.add('sel');
-              if (!show && oc.indexOf(',false,') !== -1) btn.classList.add('sel');
-            }
-          });
-        });
-        restoreAllToggleStates();
-        updateProgress();
-      }, 200);
+    var fcont3 = document.getElementById('fcont');
+    var formAlreadyBuilt = fcont3 && fcont3.querySelector('input');
+    if (!formAlreadyBuilt) {
+      buildForm();
     } else {
-      updateProgress();
+      setTimeout(function(){
+        if (ST.map) { ST.map.invalidateSize(); }
+        updateProgress();
+      }, 150);
     }
   }
   if (n===4) { buildRecap(); 
@@ -439,17 +410,15 @@ function goStep(n) {
 
 function urbConsentHTML(svcType, withUrb) {
   var anoPhotoHTML = '<div class="fg" style="margin-top:10px">'
-    + '<div class="fgi">'
-    + '<label class="lbl">Photo de l\'ANO ou du Récépissé</label>'
+    + '<div class="fgi full">'
+    + '<label class="lbl">Photo de l\'ANO ou du Récépissé <span class="req">*</span></label>'
+    + '<div class="alert" style="margin:6px 0 8px;padding:8px;font-size:.78rem">&#128196; <span>Joignez l\'<strong>Avis de Non Opposition</strong> ou le Récépissé de déclaration (JPG, PNG ou PDF).</span></div>'
     + '<div class="ua" id="ua-ano" onclick="document.getElementById(\'fi-ano\').click()">'
     + '<input type="file" id="fi-ano" accept="image/*,application/pdf" onchange="prevFile(\'fi-ano\',\'ua-ano\',\'pp-ano\')" style="display:none">'
     + '<div class="u-ico">&#128196;</div>'
     + '<div class="u-txt">Cliquez pour télécharger<br><strong>ANO ou Récépissé</strong> (JPG, PNG ou PDF)</div>'
     + '<div class="u-prev" id="pp-ano"><img id="pp-ano-i" src="" alt=""></div>'
     + '</div>'
-    + '</div>'
-    + '<div class="fgi"><label class="lbl">N° ou référence <span style="font-weight:400;color:var(--gray-500)">(optionnel)</span></label>'
-    + '<input type="text" id="f-urb-ano" placeholder="ex: ANO-2025-XXXXX">'
     + '</div>'
     + '</div>';
 
@@ -460,8 +429,8 @@ function urbConsentHTML(svcType, withUrb) {
   } else if (svcType === 'con') {
     // Consuel seul sans URB : NON → date mairie uniquement (pas d'ANO)
     conditionalField = '<div id="urb-date-w" style="display:none;margin-top:10px">'
-      + '<div class="fg"><div class="fgi full"><label class="lbl">Date d\'approbation de la mairie</label>'
-      + '<input type="date" id="f-urb-date"></div></div>'
+      + '<div class="fg"><div class="fgi full"><label class="lbl">Date d\'approbation de la mairie <span class="req">*</span></label>'
+      + '<input type="date" id="f-urb-date" data-cond-req="Date d\'approbation de la mairie"></div></div>'
       + '</div>';
   } else {
     // RAC seul ou RAC+CON sans URB : NON → ANO/récépissé photo (pas de date)
@@ -495,18 +464,18 @@ function augPuissanceHTML() {
     +'<div class="sto-box" id="aug-details-w" style="display:none">'
     +'<div class="alert" style="margin:0 0 12px;padding:10px;font-size:.8rem">&#128161; <span>Les panneaux et onduleurs renseignés ci-dessous sont <strong>ceux à installer</strong> (nouveaux uniquement), sans compter les équipements déjà existants.</span></div>'
     +'<div class="fg">'
-    +'<div class="fgi"><label class="lbl">Puissance crête existante (kWc)</label>'
-    +'<input type="number" id="f-aug-pkwc-exist" placeholder="ex: 3.0" min="0" step="0.1"></div>'
-    +'<div class="fgi"><label class="lbl">Puissance d\'injection existante (kVA)</label>'
-    +'<input type="number" id="f-aug-inj-exist" placeholder="ex: 3.0" min="0" step="0.1"></div>'
-    +'<div class="fgi"><label class="lbl">N° BTA du contrat existant</label>'
-    +'<input type="text" id="f-aug-bta" placeholder="ex: BTA-123456"></div>'
-    +'<div class="fgi"><label class="lbl">Quantité d\'onduleurs existants</label>'
-    +'<input type="number" id="f-aug-ond-exist" placeholder="ex: 1" min="0"></div>'
-    +'<div class="fgi full"><label class="lbl">Pièces d\'installation modifiées</label>'
-    +'<input type="text" id="f-aug-pieces" placeholder="ex: Onduleur, câblage DC, tableau..."></div>'
-    +'<div class="fgi"><label class="lbl">Date de mise en service de l\'ancienne installation</label>'
-    +'<input type="date" id="f-aug-date-ms"></div>'
+    +'<div class="fgi"><label class="lbl">Puissance crête existante (kWc) <span class="req">*</span></label>'
+    +'<input type="number" id="f-aug-pkwc-exist" data-cond-req="Puissance crête existante" placeholder="ex: 3.0" min="0" step="0.1"></div>'
+    +'<div class="fgi"><label class="lbl">Puissance d\'injection existante (kVA) <span class="req">*</span></label>'
+    +'<input type="number" id="f-aug-inj-exist" data-cond-req="Puissance d\'injection existante" placeholder="ex: 3.0" min="0" step="0.1"></div>'
+    +'<div class="fgi"><label class="lbl">N° BTA du contrat existant <span class="req">*</span></label>'
+    +'<input type="text" id="f-aug-bta" data-cond-req="N° BTA du contrat existant" placeholder="ex: BTA-123456"></div>'
+    +'<div class="fgi"><label class="lbl">Quantité d\'onduleurs existants <span class="req">*</span></label>'
+    +'<input type="number" id="f-aug-ond-exist" data-cond-req="Quantité d\'onduleurs existants" placeholder="ex: 1" min="0"></div>'
+    +'<div class="fgi full"><label class="lbl">Pièces d\'installation modifiées <span class="req">*</span></label>'
+    +'<input type="text" id="f-aug-pieces" data-cond-req="Pièces d\'installation modifiées" placeholder="ex: Onduleur, câblage DC, tableau..."></div>'
+    +'<div class="fgi"><label class="lbl">Date de mise en service de l\'ancienne installation <span class="req">*</span></label>'
+    +'<input type="date" id="f-aug-date-ms" data-cond-req="Date de mise en service de l\'ancienne installation"></div>'
     +'</div></div>';
 }
 
@@ -673,7 +642,7 @@ function stoHTML(t) {
       + '<input id="f-bat-amperage" type="number" placeholder="ex: 25" min="1"></div>'
       + '</div>'
       + '<div class="fgi" style="margin-top:12px">'
-      + '<label class="lbl">Type de protection de la batterie</label>'
+      + '<label class="lbl">Type de protection de la batterie <span class="req">*</span></label>'
       + '<div class="alert" style="margin:6px 0 8px;padding:8px;font-size:.78rem">&#128161; <span>Sélectionnez le dispositif principal de protection côté batterie.</span></div>'
       + '<div class="rg">'
       + '<div class="ro" onclick="togBatProt(\'slt\',this)">SLT</div>'
@@ -683,7 +652,7 @@ function stoHTML(t) {
       + '<input type="hidden" id="f-bat-prot" value="">'
       + '</div>'
       + '<div class="fgi" style="margin-top:12px">'
-      + '<label class="lbl">Fonctionnement autonome de l\'installation ?</label>'
+      + '<label class="lbl">Fonctionnement autonome de l\'installation ? <span class="req">*</span></label>'
       + '<div class="rg">'
       + '<div class="ro" onclick="togBatAuto(false,this)">Non</div>'
       + '<div class="ro" onclick="togBatAuto(true,this)">Oui</div>'
@@ -692,17 +661,18 @@ function stoHTML(t) {
       + '</div>'
       + '</div>';
   }
-  return '<div class="fgi" style="margin-bottom:12px">'
-    +'<label class="lbl">Présence d\'un système de stockage ?</label>'
+  return '<input type="hidden" id="f-sto-'+t+'-val" value="">'
+    +'<div class="fgi" style="margin-bottom:12px">'
+    +'<label class="lbl">Présence d\'un système de stockage ? <span class="req">*</span></label>'
     +'<div class="rg">'
     +'<div class="ro" onclick="togSto(\''+t+'\',false,this)">Non</div>'
     +'<div class="ro" onclick="togSto(\''+t+'\',true,this)">Oui</div>'
     +'</div></div>'
     +'<div class="sto-box" id="sto-'+t+'" style="display:none">'
     +'<div class="fg3">'
-    +'<div class="fgi"><label class="lbl">Marque batteries</label><input id="f-bat-marque" type="text" placeholder="ex: BYD, Pylontech..."></div>'
-    +'<div class="fgi"><label class="lbl">Modèle batteries</label><input id="f-bat-modele" type="text" placeholder="ex: B-BOX HV"></div>'
-    +'<div class="fgi"><label class="lbl">Nombre batteries</label><input id="f-bat-nb" type="number" placeholder="ex: 2" min="1"></div>'
+    +'<div class="fgi"><label class="lbl">Marque batteries <span class="req">*</span></label><input id="f-bat-marque" type="text" data-cond-req="Marque des batteries" placeholder="ex: BYD, Pylontech..."></div>'
+    +'<div class="fgi"><label class="lbl">Modèle batteries <span class="req">*</span></label><input id="f-bat-modele" type="text" data-cond-req="Modèle des batteries" placeholder="ex: B-BOX HV"></div>'
+    +'<div class="fgi"><label class="lbl">Nombre batteries <span class="req">*</span></label><input id="f-bat-nb" type="number" data-cond-req="Nombre de batteries" placeholder="ex: 2" min="1"></div>'
     +'</div>'
     + conFields
     +'</div>';
@@ -893,6 +863,8 @@ function togSto(t, show, el) {
   el.classList.add('sel');
   var b = document.getElementById('sto-'+t);
   if (b) b.style.display = show?'block':'none';
+  var hid = document.getElementById('f-sto-'+t+'-val');
+  if (hid) hid.value = show ? 'Oui' : 'Non';
 }
 
 // ── Co-contractant
@@ -1059,8 +1031,21 @@ function checkCalepinage() {
   return hasFile || hasText;
 }
 
+function isVisibleField(el) {
+  var parent = el.parentElement;
+  while (parent && parent.id !== 'fcont') {
+    if (parent.style && parent.style.display === 'none') return false;
+    parent = parent.parentElement;
+  }
+  return true;
+}
+
 function validateRequired() {
   var missing = [];
+  var isUrb = ST.svcs.indexOf('urb') >= 0;
+  var isRac = ST.svcs.indexOf('rac') >= 0;
+  var isCon = ST.svcs.indexOf('con') >= 0;
+  var isFul = isUrb && isRac && isCon;
 
   // 1. Champs client de base (toujours obligatoires)
   var base = [
@@ -1078,18 +1063,26 @@ function validateRequired() {
   if (document.querySelectorAll('.proj-opt input:checked').length === 0)
     missing.push('Type de projet (au moins un choix)');
 
-  // 3. Tous les inputs/selects/textareas avec data-required dans le formulaire
+  // 3. Tous les inputs/selects/textareas avec data-required dans le formulaire (visibles seulement)
   document.querySelectorAll('#fcont [data-required]').forEach(function(el){
+    if (!isVisibleField(el)) return;
     var label = el.getAttribute('data-required');
     var val   = (el.value || '').trim();
     if (!val) missing.push(label);
   });
 
-  // 4. Calepinage : photo OU description (urbanisme + complet)
-  var isUrb = ST.svcs.indexOf('urb') >= 0;
+  // 4. Champs conditionnels obligatoires (data-cond-req) — visibles seulement
+  document.querySelectorAll('#fcont [data-cond-req]').forEach(function(el){
+    if (!isVisibleField(el)) return;
+    var label = el.getAttribute('data-cond-req');
+    var val   = (el.value || '').trim();
+    if (!val) missing.push(label);
+  });
+
+  // 5. Calepinage : photo OU description (urbanisme + complet)
   if (isUrb && !checkCalepinage()) missing.push('Calepinage (photo et/ou description)');
 
-  // 5. Photos obligatoires : vérifier que les zones upload ont la classe 'ok'
+  // 6. Photos obligatoires : vérifier que les zones upload ont la classe 'ok'
   var uploadChecks = [];
   if (ST.svcs.indexOf('urb') >= 0) {
     uploadChecks.push({id:'ua-l', label:'Photo lointaine'});
@@ -1104,6 +1097,43 @@ function validateRequired() {
     var el = document.getElementById(u.id);
     if (el && !el.classList.contains('ok')) missing.push(u.label);
   });
+
+  // 7. Question stockage Oui/Non (obligatoire de répondre)
+  if (!isFul) {
+    var stoSvcs = [];
+    if (isRac && !isCon) stoSvcs.push('rac');
+    if (isCon) stoSvcs.push('con');
+    stoSvcs.forEach(function(t){
+      var stoVal = getVal('f-sto-'+t+'-val');
+      if (!stoVal) missing.push('Présence d\'un système de stockage (veuillez répondre Oui ou Non)');
+    });
+  }
+
+  // 8. Batterie : si stockage = Oui (con), protection et autonomie obligatoires
+  var stoConBox = document.getElementById('sto-con');
+  if (stoConBox && stoConBox.style.display !== 'none') {
+    if (!getVal('f-bat-prot')) missing.push('Type de protection de la batterie');
+    if (!getVal('f-bat-auto')) missing.push('Fonctionnement autonome de l\'installation');
+  }
+
+  // 9. Démarche urbanisme (question obligatoire si rac/con sans full)
+  if (!isFul && (isRac || isCon)) {
+    var urbSvcType = isRac ? 'rac' : 'con';
+    var urbHid = document.getElementById('f-urb-kva-' + urbSvcType);
+    if (!urbHid || !urbHid.value) {
+      missing.push('Réponse requise : KVA Solutions chargée de l\'urbanisme ? (Oui / Non)');
+    } else if (urbHid.value === 'Non') {
+      // ANO photo obligatoire si raccordement
+      if (isRac) {
+        var anoEl = document.getElementById('ua-ano');
+        if (anoEl && !anoEl.classList.contains('ok')) missing.push('Photo de l\'ANO ou Récépissé (obligatoire)');
+      }
+      // Date mairie obligatoire si consuel seul sans raccordement
+      if (!isRac && isCon) {
+        if (!getVal('f-urb-date')) missing.push('Date d\'approbation de la mairie (obligatoire)');
+      }
+    }
+  }
 
   return missing;
 }
@@ -1124,6 +1154,11 @@ function highlightMissing() {
     if (el && !el.value.trim()) el.style.borderColor = 'var(--red)';
   });
   document.querySelectorAll('#fcont [data-required]').forEach(function(el){
+    if (!isVisibleField(el)) return;
+    if (!(el.value||'').trim()) el.style.borderColor = 'var(--red)';
+  });
+  document.querySelectorAll('#fcont [data-cond-req]').forEach(function(el){
+    if (!isVisibleField(el)) return;
     if (!(el.value||'').trim()) el.style.borderColor = 'var(--red)';
   });
 }
@@ -1559,6 +1594,9 @@ function applyClientProfile(profile) {
       var show = profile.sto_state[t];
       var box  = document.getElementById('sto-'+t);
       if (box) box.style.display = show ? 'block' : 'none';
+      // Restore hidden tracking field
+      var hidVal = document.getElementById('f-sto-'+t+'-val');
+      if (hidVal) hidVal.value = show ? 'Oui' : 'Non';
       document.querySelectorAll('.rg .ro').forEach(function(btn){
         var oc = btn.getAttribute('onclick') || '';
         if (oc.indexOf("'" + t + "'") !== -1) {
@@ -1895,6 +1933,10 @@ function buildRecap() {
 
 function countRequired() {
   var total = 0, filled = 0;
+  var isUrb = ST.svcs.indexOf('urb') >= 0;
+  var isRac = ST.svcs.indexOf('rac') >= 0;
+  var isCon = ST.svcs.indexOf('con') >= 0;
+  var isFul = isUrb && isRac && isCon;
 
   // Champs client de base
   ['f-nom','f-prenom','f-tel','f-email','f-addr','f-cp','f-ville'].forEach(function(id){
@@ -1906,20 +1948,24 @@ function countRequired() {
   total++;
   if (document.querySelectorAll('.proj-opt input:checked').length > 0) filled++;
 
-  // Tous les champs data-required
+  // Tous les champs data-required visibles
   document.querySelectorAll('#fcont [data-required]').forEach(function(el){
+    if (!isVisibleField(el)) return;
+    total++;
+    if ((el.value||'').trim()) filled++;
+  });
+
+  // Champs data-cond-req visibles
+  document.querySelectorAll('#fcont [data-cond-req]').forEach(function(el){
+    if (!isVisibleField(el)) return;
     total++;
     if ((el.value||'').trim()) filled++;
   });
 
   // Photos obligatoires
   var uploadIds = [];
-  if (ST.svcs.indexOf('urb') >= 0) {
-    uploadIds.push('ua-l','ua-p');
-  }
-  if (ST.svcs.indexOf('rac') >= 0) {
-    uploadIds.push('ua-f','ua-t','ua-k');
-  }
+  if (isUrb) uploadIds.push('ua-l','ua-p');
+  if (isRac) uploadIds.push('ua-f','ua-t','ua-k');
   uploadIds.forEach(function(id){
     total++;
     var el = document.getElementById(id);
@@ -1927,9 +1973,49 @@ function countRequired() {
   });
 
   // Calepinage (urb/ful)
-  if (ST.svcs.indexOf('urb') >= 0) {
+  if (isUrb) {
     total++;
     if (checkCalepinage()) filled++;
+  }
+
+  // Question stockage Oui/Non
+  if (!isFul) {
+    var stoSvcs = [];
+    if (isRac && !isCon) stoSvcs.push('rac');
+    if (isCon) stoSvcs.push('con');
+    stoSvcs.forEach(function(t){
+      total++;
+      if (getVal('f-sto-'+t+'-val')) filled++;
+    });
+  }
+
+  // Batterie protection + autonomie (si stockage con visible)
+  var stoConBox = document.getElementById('sto-con');
+  if (stoConBox && stoConBox.style.display !== 'none') {
+    total += 2;
+    if (getVal('f-bat-prot')) filled++;
+    if (getVal('f-bat-auto')) filled++;
+  }
+
+  // Urbanisme consent
+  if (!isFul && (isRac || isCon)) {
+    var urbSvcType = isRac ? 'rac' : 'con';
+    total++;
+    var urbVal = getVal('f-urb-kva-' + urbSvcType);
+    if (urbVal) {
+      filled++;
+      if (urbVal === 'Non') {
+        if (isRac) {
+          total++;
+          var anoEl = document.getElementById('ua-ano');
+          if (anoEl && anoEl.classList.contains('ok')) filled++;
+        }
+        if (!isRac && isCon) {
+          total++;
+          if (getVal('f-urb-date')) filled++;
+        }
+      }
+    }
   }
 
   return { total: total, filled: filled };
