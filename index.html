@@ -199,9 +199,10 @@ select{cursor:pointer}
     <div class="ch">
       <div class="badge">Étape 2 / 4</div>
       <h2>Choix du service</h2>
-      <p>Sélectionnez le service souhaité</p>
+      <p>Sélectionnez au moins un service — sélection multiple possible</p>
     </div>
     <div class="cb">
+      <div class="alert" style="margin-bottom:16px">&#128161; <span>Vous pouvez sélectionner <strong>plusieurs démarches</strong> en cliquant sur chaque carte. <em>Dossier Complet</em> sélectionne les 3 en un clic.</span></div>
       <div class="svc-grid">
         <div class="sc" id="sv-u" onclick="selSvc('urb')">
           <div class="si">&#128203;</div>
@@ -297,7 +298,23 @@ var IMGS = {
 document.getElementById('hlogo').src = IMGS.logo;
 
 // ── State
-var ST = { type:'res', svc:null, map:null, mkr:null };
+var ST = { type:'res', svc:null, svcs:[], map:null, mkr:null };
+
+function getSvc() {
+  var s = ST.svcs.slice().sort();
+  if (s.length === 0) return null;
+  if (s.length === 1) return s[0];
+  if (s.length === 3) return 'ful';
+  return s.join('+');
+}
+
+function getSvcLabel() {
+  var svcLabels = {
+    urb:'Urbanisme', rac:'Raccordement', con:'Consuel', ful:'Dossier Complet',
+    'con+rac':'Raccordement + Consuel', 'rac+urb':'Urbanisme + Raccordement', 'con+urb':'Urbanisme + Consuel'
+  };
+  return svcLabels[getSvc()] || getSvc() || '';
+}
 
 // ── Type select
 function selType(t) {
@@ -308,12 +325,36 @@ function selType(t) {
   document.getElementById('btn1').style.display    = t==='ter' ? 'none' : 'inline-flex';
 }
 
-// ── Service select
+// ── Service select (multi)
 function selSvc(s) {
-  ST.svc = s;
-  ['sv-u','sv-r','sv-c','sv-f'].forEach(function(id){ document.getElementById(id).classList.remove('sel'); });
-  var m = {urb:'sv-u', rac:'sv-r', con:'sv-c', ful:'sv-f'};
-  document.getElementById(m[s]).classList.add('sel');
+  if (s === 'ful') {
+    var allSel = ['urb','rac','con'].every(function(x){ return ST.svcs.indexOf(x) >= 0; });
+    ST.svcs = allSel ? [] : ['urb','rac','con'];
+  } else {
+    var idx = ST.svcs.indexOf(s);
+    if (idx >= 0) { ST.svcs.splice(idx, 1); } else { ST.svcs.push(s); }
+  }
+  ST.svc = getSvc();
+  updateSvcVisual();
+}
+
+function updateSvcVisual() {
+  var m = {urb:'sv-u', rac:'sv-r', con:'sv-c'};
+  Object.keys(m).forEach(function(k){
+    var el = document.getElementById(m[k]);
+    if (el) el.classList.toggle('sel', ST.svcs.indexOf(k) >= 0);
+  });
+  var allSel = ['urb','rac','con'].every(function(x){ return ST.svcs.indexOf(x) >= 0; });
+  var fulEl = document.getElementById('sv-f');
+  if (fulEl) fulEl.classList.toggle('sel', allSel);
+  // Update subtitle
+  var sub = document.querySelector('#s2 .ch p');
+  if (sub) {
+    var count = ST.svcs.length;
+    sub.textContent = count === 0 ? 'Sélectionnez au moins un service' :
+      count === 1 ? '1 service sélectionné — vous pouvez en ajouter d\'autres' :
+      count + ' services sélectionnés';
+  }
 }
 
 // ── Navigation
@@ -325,7 +366,7 @@ function goStep(n) {
     if (!instEmail) { alert("L'email de l'installateur est obligatoire."); document.getElementById('inst-email').focus(); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(instEmail)) { alert("L'adresse email de l'installateur n'est pas valide."); document.getElementById('inst-email').focus(); return; }
   }
-  if (n===3 && !ST.svc) { alert('Veuillez selectionner un service.'); return; }
+  if (n===3 && ST.svcs.length === 0) { alert('Veuillez sélectionner au moins un service.'); return; }
   if (n===4) {
     var missing = validateRequired();
     if (!getVal('inst-nom') || !getVal('inst-email')) { alert("Retournez a l'etape 1 : le nom et l'email de l'installateur sont obligatoires."); return; }
@@ -346,7 +387,48 @@ function goStep(n) {
     var stepLabels = {1:'Votre installation', 2:'Choix du service'};
     document.getElementById('ptxt').textContent = stepLabels[n] || 'Étape '+n;
   }
-  if (n===3) { buildForm(); updateProgress(); }
+  if (n===3) {
+    // Si on revient depuis l'étape 4, sauvegarder les valeurs avant de reconstruire le formulaire
+    var savedVals = {};
+    var savedSto  = {};
+    var fcont = document.getElementById('fcont');
+    if (fcont && fcont.innerHTML.trim()) {
+      document.querySelectorAll('#fcont input[id], #fcont select[id], #fcont textarea[id]').forEach(function(el){
+        savedVals[el.id] = el.value;
+      });
+      ['rac','con'].forEach(function(t){
+        var box = document.getElementById('sto-'+t);
+        if (box) savedSto[t] = (box.style.display !== 'none');
+      });
+    }
+    buildForm();
+    // Restaurer les valeurs après reconstruction
+    if (Object.keys(savedVals).length > 0) {
+      setTimeout(function(){
+        Object.keys(savedVals).forEach(function(id){
+          var el = document.getElementById(id);
+          if (el && savedVals[id] !== undefined) el.value = savedVals[id];
+        });
+        Object.keys(savedSto).forEach(function(t){
+          var show = savedSto[t];
+          var box  = document.getElementById('sto-'+t);
+          if (box) box.style.display = show ? 'block' : 'none';
+          document.querySelectorAll('.rg .ro').forEach(function(btn){
+            var oc = btn.getAttribute('onclick') || '';
+            if (oc.indexOf("'" + t + "'") !== -1) {
+              btn.classList.remove('sel');
+              if (show  && oc.indexOf(',true,')  !== -1) btn.classList.add('sel');
+              if (!show && oc.indexOf(',false,') !== -1) btn.classList.add('sel');
+            }
+          });
+        });
+        restoreAllToggleStates();
+        updateProgress();
+      }, 200);
+    } else {
+      updateProgress();
+    }
+  }
   if (n===4) { buildRecap(); 
     document.getElementById('pfill').style.width='100%';
     document.getElementById('ppct').textContent='100%';
@@ -355,47 +437,132 @@ function goStep(n) {
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
+function urbConsentHTML(svcType, withUrb) {
+  var anoPhotoHTML = '<div class="fg" style="margin-top:10px">'
+    + '<div class="fgi">'
+    + '<label class="lbl">Photo de l\'ANO ou du Récépissé</label>'
+    + '<div class="ua" id="ua-ano" onclick="document.getElementById(\'fi-ano\').click()">'
+    + '<input type="file" id="fi-ano" accept="image/*,application/pdf" onchange="prevFile(\'fi-ano\',\'ua-ano\',\'pp-ano\')" style="display:none">'
+    + '<div class="u-ico">&#128196;</div>'
+    + '<div class="u-txt">Cliquez pour télécharger<br><strong>ANO ou Récépissé</strong> (JPG, PNG ou PDF)</div>'
+    + '<div class="u-prev" id="pp-ano"><img id="pp-ano-i" src="" alt=""></div>'
+    + '</div>'
+    + '</div>'
+    + '<div class="fgi"><label class="lbl">N° ou référence <span style="font-weight:400;color:var(--gray-500)">(optionnel)</span></label>'
+    + '<input type="text" id="f-urb-ano" placeholder="ex: ANO-2025-XXXXX">'
+    + '</div>'
+    + '</div>';
+
+  var conditionalField = '';
+  if (withUrb) {
+    // URB parmi les services : OUI → montrer ANO
+    conditionalField = '<div id="urb-ano-w" style="display:none;margin-top:10px">' + anoPhotoHTML + '</div>';
+  } else if (svcType === 'con') {
+    // Consuel seul sans URB : NON → date mairie uniquement (pas d'ANO)
+    conditionalField = '<div id="urb-date-w" style="display:none;margin-top:10px">'
+      + '<div class="fg"><div class="fgi full"><label class="lbl">Date d\'approbation de la mairie</label>'
+      + '<input type="date" id="f-urb-date"></div></div>'
+      + '</div>';
+  } else {
+    // RAC seul ou RAC+CON sans URB : NON → ANO/récépissé photo (pas de date)
+    conditionalField = '<div id="urb-ano-w" style="display:none;margin-top:10px">' + anoPhotoHTML + '</div>';
+  }
+
+  var hint = withUrb
+    ? '&#128161; <span>KVA Solutions prend en charge l\'urbanisme. Si l\'ANO a déjà été obtenu, joignez-le ci-dessous.</span>'
+    : '&#9888;&#65039; <span>Si l\'urbanisme n\'est pas confié à KVA Solutions, fournissez l\'Avis de Non Opposition ou le Récépissé.</span>';
+  var hintClass = withUrb ? 'alert' : 'alert alert-warn';
+
+  return '<input type="hidden" id="f-urb-kva-'+svcType+'" value="">'
+    +'<div class="fgi" style="margin-bottom:8px">'
+    +'<label class="lbl">KVA Solutions sera-t-elle chargée de la démarche urbanisme ? <span class="req">*</span></label>'
+    +'<div class="'+hintClass+'" style="margin:6px 0 10px;font-size:.8rem">'+hint+'</div>'
+    +'<div class="rg">'
+    +'<div class="ro" onclick="togUrb(\''+svcType+'\',true,this,'+withUrb+')">&#9989; Oui — KVA Solutions</div>'
+    +'<div class="ro" onclick="togUrb(\''+svcType+'\',false,this,'+withUrb+')">Non — Déjà traité</div>'
+    +'</div></div>'
+    + conditionalField;
+}
+
+function augPuissanceHTML() {
+  return '<input type="hidden" id="f-aug-oui" value="Non">'
+    +'<div class="fgi" style="margin-bottom:8px">'
+    +'<label class="lbl">S\'agit-il d\'une augmentation de puissance ?</label>'
+    +'<div class="rg">'
+    +'<div class="ro sel" onclick="togAug(false,this)">Non — nouvelle installation</div>'
+    +'<div class="ro" onclick="togAug(true,this)">Oui — modification</div>'
+    +'</div></div>'
+    +'<div class="sto-box" id="aug-details-w" style="display:none">'
+    +'<div class="alert" style="margin:0 0 12px;padding:10px;font-size:.8rem">&#128161; <span>Les panneaux et onduleurs renseignés ci-dessous sont <strong>ceux à installer</strong> (nouveaux uniquement), sans compter les équipements déjà existants.</span></div>'
+    +'<div class="fg">'
+    +'<div class="fgi"><label class="lbl">Puissance crête existante (kWc)</label>'
+    +'<input type="number" id="f-aug-pkwc-exist" placeholder="ex: 3.0" min="0" step="0.1"></div>'
+    +'<div class="fgi"><label class="lbl">Puissance d\'injection existante (kVA)</label>'
+    +'<input type="number" id="f-aug-inj-exist" placeholder="ex: 3.0" min="0" step="0.1"></div>'
+    +'<div class="fgi"><label class="lbl">N° BTA du contrat existant</label>'
+    +'<input type="text" id="f-aug-bta" placeholder="ex: BTA-123456"></div>'
+    +'<div class="fgi"><label class="lbl">Quantité d\'onduleurs existants</label>'
+    +'<input type="number" id="f-aug-ond-exist" placeholder="ex: 1" min="0"></div>'
+    +'<div class="fgi full"><label class="lbl">Pièces d\'installation modifiées</label>'
+    +'<input type="text" id="f-aug-pieces" placeholder="ex: Onduleur, câblage DC, tableau..."></div>'
+    +'<div class="fgi"><label class="lbl">Date de mise en service de l\'ancienne installation</label>'
+    +'<input type="date" id="f-aug-date-ms"></div>'
+    +'</div></div>';
+}
+
 // ── Form builder
 function sec(t, body) {
   return '<div class="sec-title">'+t+'</div>'+body+'<div class="hr"></div>';
 }
 
 function buildForm() {
-  var titles = {
+  var svcTitles = {
     urb:['Formulaire Urbanisme','Déclaration préalable de travaux'],
     rac:['Formulaire Raccordement','Demande de raccordement ENEDIS'],
     con:['Formulaire Consuel','Attestation de conformité électrique'],
-    ful:['Dossier Complet','Urbanisme + Raccordement + Consuel']
+    ful:['Dossier Complet','Urbanisme + Raccordement + Consuel'],
+    'con+rac':['Dossier Raccordement + Consuel','Raccordement ENEDIS + Attestation de conformité'],
+    'rac+urb':['Dossier Urbanisme + Raccordement','Déclaration préalable + Raccordement ENEDIS'],
+    'con+urb':['Dossier Urbanisme + Consuel','Déclaration préalable + Attestation de conformité']
   };
-  document.getElementById('ftitle').textContent = titles[ST.svc][0];
-  document.getElementById('fsub').textContent   = titles[ST.svc][1];
+  var svc = getSvc();
+  var t = svcTitles[svc] || [svc, ''];
+  document.getElementById('ftitle').textContent = t[0];
+  document.getElementById('fsub').textContent   = t[1];
 
-  var s = ST.svc;
-  var isUrb = s==='urb'||s==='ful';
-  var isRac = s==='rac'||s==='ful';
-  var isCon = s==='con'||s==='ful';
+  var isUrb = ST.svcs.indexOf('urb') >= 0;
+  var isRac = ST.svcs.indexOf('rac') >= 0;
+  var isCon = ST.svcs.indexOf('con') >= 0;
+  var isFul = isUrb && isRac && isCon;
 
   var html = '';
   html += sec('&#128100; Informations personnelles', idHTML());
   html += sec('&#128205; Localisation', locHTML());
 
   if (isUrb) {
-    html += sec('&#9728;&#65039; Installation photovoltaïque', panUrbHTML());
+    html += sec('&#9728;&#65039; Installation photovoltaïque', panUrbHTML(isRac || isCon));
     html += sec('&#128247; Photos de la propriété', photoUrbHTML());
   }
   if (isRac) {
+    html += sec('&#128268; Modification d\'installation', augPuissanceHTML());
     if (!isUrb) html += sec('&#9728;&#65039; Panneaux &amp; onduleurs', panRacHTML());
     else        html += sec('&#9889; Onduleurs', ondHTML());
-    // Si Consuel aussi présent, le stockage sera affiché dans le bloc Consuel (dédoublonnage)
     if (!isCon) html += sec('&#128267; Stockage', stoHTML('rac'));
     html += sec('&#128203; Informations électriques', elecHTML());
     html += sec('&#128247; Documents et photos', photoRacHTML());
   }
   if (isCon) {
-    if (!isRac && !isUrb) html += sec('&#9728;&#65039; Panneaux &amp; onduleurs', panRacHTML());
-    // Stockage demandé une seule fois (avec ampérage batterie pour Consuel)
+    if (!isRac) {
+      html += sec('&#128268; Modification d\'installation', augPuissanceHTML());
+      if (!isUrb) html += sec('&#9728;&#65039; Panneaux &amp; onduleurs', panRacHTML());
+    }
     html += sec('&#128267; Stockage', stoHTML('con'));
-    html += sec('&#128296; Protection &amp; installation (Consuel)', consHTML());
+    html += sec('&#128296; Protection &amp; installation (Consuel)', consHTML(!isRac));
+  }
+  // Urbanisme question : sauf si les 3 services sont sélectionnés (KVA gère tout)
+  if (!isFul && (isRac || isCon)) {
+    var urbSvcType = isRac ? 'rac' : 'con';
+    html += sec('&#127968; Démarche urbanisme', urbConsentHTML(urbSvcType, isUrb));
   }
 
   document.getElementById('fcont').innerHTML = html;
@@ -451,49 +618,94 @@ function locHTML() {
     +'</div>';
 }
 
-function panUrbHTML() {
+function panWcHTML() {
+  return '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--gray-200)">'
+    +'<input type="hidden" id="f-pan-wc-diff" value="Non">'
+    +'<div class="fgi" style="margin-bottom:6px">'
+    +'<label class="lbl">La puissance d\'injection à déclarer est-elle différente de la puissance max des onduleurs ?</label>'
+    +'<div class="rg">'
+    +'<div class="ro sel" onclick="togPanWc(false,this)">Non — conforme au modèle</div>'
+    +'<div class="ro" onclick="togPanWc(true,this)">Oui — valeur spécifique</div>'
+    +'</div></div>'
+    +'<div id="pan-wc-w" style="display:none"><div class="fg"><div class="fgi">'
+    +'<label class="lbl">Puissance d\'injection à déclarer (kVA)</label>'
+    +'<input type="number" id="f-pan-wc" placeholder="ex: 3.0" min="0" step="0.1">'
+    +'</div></div></div>'
+    +'</div>';
+}
+
+function panUrbHTML(showWc) {
   return '<div class="fg3">'
     +'<div class="fgi"><label class="lbl">Marque panneaux <span class="req">*</span></label><input id="f-pan-marque" type="text" data-required="Marque des panneaux" placeholder="ex: JA Solar, Longi..."></div>'
     +'<div class="fgi"><label class="lbl">Modèle panneaux <span class="req">*</span></label><input id="f-pan-modele" type="text" data-required="Modèle des panneaux" placeholder="ex: JAM72S30-550"></div>'
     +'<div class="fgi"><label class="lbl">Nombre panneaux <span class="req">*</span></label><input id="f-pan-nb" type="number" data-required="Nombre de panneaux" placeholder="ex: 10" min="1"></div>'
-    +'</div>';
+    +'</div>'
+    + (showWc ? panWcHTML() : '');
 }
 
 function panRacHTML() {
   return '<div class="fg3">'
     +'<div class="fgi"><label class="lbl">Marque panneaux <span class="req">*</span></label><input id="f-pan-marque" type="text" data-required="Marque des panneaux" placeholder="ex: JA Solar"></div>'
-    +'<div class="fgi"><label class="lbl">Modèle panneaux <span class="req">*</span></label><input type="text" data-required="Modèle des panneaux" placeholder="ex: JAM72S30-550"></div>'
-    +'<div class="fgi"><label class="lbl">Nombre panneaux <span class="req">*</span></label><input type="number" data-required="Nombre de panneaux" placeholder="ex: 10" min="1"></div>'
+    +'<div class="fgi"><label class="lbl">Modèle panneaux <span class="req">*</span></label><input id="f-pan-modele" type="text" data-required="Modèle des panneaux" placeholder="ex: JAM72S30-550"></div>'
+    +'<div class="fgi"><label class="lbl">Nombre panneaux <span class="req">*</span></label><input id="f-pan-nb" type="number" data-required="Nombre de panneaux" placeholder="ex: 10" min="1"></div>'
+    +'<div class="fgi"><label class="lbl">Marque onduleurs <span class="req">*</span></label><input id="f-ond-marque" type="text" data-required="Marque des onduleurs" placeholder="ex: SolarEdge, Fronius..."></div>'
+    +'<div class="fgi"><label class="lbl">Modèle onduleurs <span class="req">*</span></label><input id="f-ond-modele" type="text" data-required="Modèle des onduleurs" placeholder="ex: SE6K-RWS"></div>'
+    +'<div class="fgi"><label class="lbl">Nombre onduleurs <span class="req">*</span></label><input id="f-ond-nb" type="number" data-required="Nombre d&#39;onduleurs" placeholder="ex: 1" min="1"></div>'
+    +'</div>'
+    + panWcHTML();
+}
+
+function ondHTML() {
+  return '<div class="fg3">'
     +'<div class="fgi"><label class="lbl">Marque onduleurs <span class="req">*</span></label><input id="f-ond-marque" type="text" data-required="Marque des onduleurs" placeholder="ex: SolarEdge, Fronius..."></div>'
     +'<div class="fgi"><label class="lbl">Modèle onduleurs <span class="req">*</span></label><input id="f-ond-modele" type="text" data-required="Modèle des onduleurs" placeholder="ex: SE6K-RWS"></div>'
     +'<div class="fgi"><label class="lbl">Nombre onduleurs <span class="req">*</span></label><input id="f-ond-nb" type="number" data-required="Nombre d&#39;onduleurs" placeholder="ex: 1" min="1"></div>'
     +'</div>';
 }
 
-function ondHTML() {
-  return '<div class="fg3">'
-    +'<div class="fgi"><label class="lbl">Marque onduleurs <span class="req">*</span></label><input type="text" data-required="Marque des onduleurs" placeholder="ex: SolarEdge, Fronius..."></div>'
-    +'<div class="fgi"><label class="lbl">Modèle onduleurs <span class="req">*</span></label><input type="text" data-required="Modèle des onduleurs" placeholder="ex: SE6K-RWS"></div>'
-    +'<div class="fgi"><label class="lbl">Nombre onduleurs <span class="req">*</span></label><input type="number" data-required="Nombre d&#39;onduleurs" placeholder="ex: 1" min="1"></div>'
-    +'</div>';
-}
-
 function stoHTML(t) {
-  var extra = t==='con'
-    ? '<div class="fgi full"><label class="lbl">Ampérage câble de protection batterie (A)</label><input id="f-bat-amperage" type="number" placeholder="ex: 25" min="1"></div>'
-    : '';
+  var conFields = '';
+  if (t === 'con') {
+    conFields = '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-200)">'
+      + '<div style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin-bottom:12px">&#128268; Paramètres électriques batterie (Consuel)</div>'
+      + '<div class="fg">'
+      + '<div class="fgi"><label class="lbl">Ampérage câble de protection batterie (A)</label>'
+      + '<input id="f-bat-amperage" type="number" placeholder="ex: 25" min="1"></div>'
+      + '</div>'
+      + '<div class="fgi" style="margin-top:12px">'
+      + '<label class="lbl">Type de protection de la batterie</label>'
+      + '<div class="alert" style="margin:6px 0 8px;padding:8px;font-size:.78rem">&#128161; <span>Sélectionnez le dispositif principal de protection côté batterie.</span></div>'
+      + '<div class="rg">'
+      + '<div class="ro" onclick="togBatProt(\'slt\',this)">SLT</div>'
+      + '<div class="ro" onclick="togBatProt(\'tbts\',this)">TBTS / TBTP</div>'
+      + '<div class="ro" onclick="togBatProt(\'sep\',this)">Séparation électrique</div>'
+      + '</div>'
+      + '<input type="hidden" id="f-bat-prot" value="">'
+      + '</div>'
+      + '<div class="fgi" style="margin-top:12px">'
+      + '<label class="lbl">Fonctionnement autonome de l\'installation ?</label>'
+      + '<div class="rg">'
+      + '<div class="ro" onclick="togBatAuto(false,this)">Non</div>'
+      + '<div class="ro" onclick="togBatAuto(true,this)">Oui</div>'
+      + '</div>'
+      + '<input type="hidden" id="f-bat-auto" value="">'
+      + '</div>'
+      + '</div>';
+  }
   return '<div class="fgi" style="margin-bottom:12px">'
     +'<label class="lbl">Présence d\'un système de stockage ?</label>'
     +'<div class="rg">'
     +'<div class="ro" onclick="togSto(\''+t+'\',false,this)">Non</div>'
     +'<div class="ro" onclick="togSto(\''+t+'\',true,this)">Oui</div>'
     +'</div></div>'
-    +'<div class="sto-box" id="sto-'+t+'" style="display:none"><div class="fg3">'
+    +'<div class="sto-box" id="sto-'+t+'" style="display:none">'
+    +'<div class="fg3">'
     +'<div class="fgi"><label class="lbl">Marque batteries</label><input id="f-bat-marque" type="text" placeholder="ex: BYD, Pylontech..."></div>'
     +'<div class="fgi"><label class="lbl">Modèle batteries</label><input id="f-bat-modele" type="text" placeholder="ex: B-BOX HV"></div>'
     +'<div class="fgi"><label class="lbl">Nombre batteries</label><input id="f-bat-nb" type="number" placeholder="ex: 2" min="1"></div>'
-    +extra
-    +'</div></div>';
+    +'</div>'
+    + conFields
+    +'</div>';
 }
 
 function elecHTML() {
@@ -596,15 +808,25 @@ function photoRacHTML() {
     +'</div>';
 }
 
-function consHTML() {
+function consHTML(includeBranchement) {
+  var branchRow = includeBranchement
+    ? '<div class="fgi"><label class="lbl">Type de branchement <span class="req">*</span></label>'
+      + '<select id="f-branchement" data-required="Type de branchement"><option value="">— Sélectionner —</option><option>Monophasé</option><option>Triphasé</option></select></div>'
+    : '';
   return '<div class="fg">'
+    + branchRow
     +'<div class="fgi"><label class="lbl">Protection DC</label>'
-    +'<select id="f-protection-dc" data-required="Protection DC"><option value="">— Sélectionner —</option>'
+    +'<select id="f-protection-dc"><option value="">— Sélectionner —</option>'
     +'<option>Présente (Disjoncteur)</option><option>Présente (Fusible)</option>'
     +'<option>Absente</option><option>Non applicable (micro-onduleur)</option>'
     +'</select></div>'
     +'<div class="fgi"><label class="lbl">Date de pose des panneaux <span class="req">*</span></label>'
     +'<input id="f-date-pose" type="date" data-required="Date de pose des panneaux"></div>'
+    +'</div>'
+    +'<div class="fgi full" style="margin-top:14px">'
+    +'<label class="lbl">Description du chaînage des panneaux <span style="font-weight:400;color:var(--gray-500)">(pour le schéma unifilaire)</span></label>'
+    +'<div class="alert" style="margin:6px 0 8px;padding:10px;font-size:.8rem">&#128196; <span>Indiquez la disposition en série/parallèle des strings, ex : <strong>2 strings de 5 panneaux en parallèle</strong>, orientation, particularités.</span></div>'
+    +'<textarea id="f-chainag" placeholder="Ex : 1 string de 10 panneaux en série sur onduleur central. Orientation Sud, inclinaison 30°..." style="width:100%;min-height:80px;border:1.5px solid var(--gray-200);border-radius:8px;padding:10px 14px;font-size:.88rem;font-family:DM Sans,sans-serif;outline:none;background:var(--gray-50);resize:vertical"></textarea>'
     +'</div>';
 }
 
@@ -679,6 +901,130 @@ function togAutre(sel) {
   if (w) w.style.display = sel.value==='Autre'?'block':'none';
 }
 
+// ── Urbanisme KVA
+// ── Urbanisme KVA (withUrb = true si URB est aussi sélectionné comme service)
+function togUrb(svcType, isKvaUrb, btn, withUrb) {
+  btn.closest('.rg').querySelectorAll('.ro').forEach(function(b){ b.classList.remove('sel'); });
+  btn.classList.add('sel');
+  var hid = document.getElementById('f-urb-kva-'+svcType);
+  if (hid) hid.value = isKvaUrb ? 'Oui' : 'Non';
+  // withUrb=true : OUI→montrer ANO, NON→cacher | withUrb=false : OUI→cacher, NON→montrer
+  var showDoc = withUrb ? isKvaUrb : !isKvaUrb;
+  var wId = (svcType === 'con' && !withUrb) ? 'urb-date-w' : 'urb-ano-w';
+  var w = document.getElementById(wId);
+  if (w) w.style.display = showDoc ? 'block' : 'none';
+}
+
+// ── Puissance panneau Wc différente
+function togPanWc(val, btn) {
+  btn.closest('.rg').querySelectorAll('.ro').forEach(function(b){ b.classList.remove('sel'); });
+  btn.classList.add('sel');
+  var hid = document.getElementById('f-pan-wc-diff');
+  if (hid) hid.value = val ? 'Oui' : 'Non';
+  var w = document.getElementById('pan-wc-w');
+  if (w) w.style.display = val ? 'block' : 'none';
+}
+
+// ── Augmentation de puissance
+function togAug(val, btn) {
+  btn.closest('.rg').querySelectorAll('.ro').forEach(function(b){ b.classList.remove('sel'); });
+  btn.classList.add('sel');
+  var hid = document.getElementById('f-aug-oui');
+  if (hid) hid.value = val ? 'Oui' : 'Non';
+  var w = document.getElementById('aug-details-w');
+  if (w) w.style.display = val ? 'block' : 'none';
+}
+
+// ── Protection batterie Consuel (radio single-choice)
+function togBatProt(val, btn) {
+  btn.closest('.rg').querySelectorAll('.ro').forEach(function(b){ b.classList.remove('sel'); });
+  btn.classList.add('sel');
+  var hid = document.getElementById('f-bat-prot');
+  if (hid) { var labels = {slt:'SLT',tbts:'TBTS / TBTP',sep:'Séparation électrique'}; hid.value = labels[val]||val; }
+}
+
+// ── Fonctionnement autonome batterie Consuel
+function togBatAuto(val, btn) {
+  btn.closest('.rg').querySelectorAll('.ro').forEach(function(b){ b.classList.remove('sel'); });
+  btn.classList.add('sel');
+  var hid = document.getElementById('f-bat-auto');
+  if (hid) hid.value = val ? 'Oui' : 'Non';
+}
+
+// ── Restauration des états visuels de tous les toggles après rechargement
+function restoreAllToggleStates() {
+  // Puissance panneaux Wc
+  var panWcHid = document.getElementById('f-pan-wc-diff');
+  if (panWcHid && panWcHid.value && panWcHid.value !== 'Non') {
+    var isPwcOui = panWcHid.value === 'Oui';
+    var pwcW = document.getElementById('pan-wc-w');
+    if (pwcW) pwcW.style.display = isPwcOui ? 'block' : 'none';
+    document.querySelectorAll('.rg .ro').forEach(function(btn){
+      var oc = btn.getAttribute('onclick') || '';
+      if (oc.indexOf('togPanWc') !== -1) {
+        btn.classList.remove('sel');
+        if ((isPwcOui && oc.indexOf('true') !== -1) || (!isPwcOui && oc.indexOf('false') !== -1)) btn.classList.add('sel');
+      }
+    });
+  }
+  // Augmentation de puissance
+  var augHid = document.getElementById('f-aug-oui');
+  if (augHid && augHid.value) {
+    var isAugOui = augHid.value === 'Oui';
+    var augW = document.getElementById('aug-details-w');
+    if (augW) augW.style.display = isAugOui ? 'block' : 'none';
+    document.querySelectorAll('.rg .ro').forEach(function(btn){
+      var oc = btn.getAttribute('onclick') || '';
+      if (oc.indexOf('togAug') !== -1) {
+        btn.classList.remove('sel');
+        if ((isAugOui && oc.indexOf('true') !== -1) || (!isAugOui && oc.indexOf('false') !== -1)) btn.classList.add('sel');
+      }
+    });
+  }
+  // Urbanisme consent
+  ['con','rac'].forEach(function(svcT){
+    var urbHid = document.getElementById('f-urb-kva-'+svcT);
+    if (urbHid && urbHid.value) {
+      var isUrbKva = urbHid.value.indexOf('Oui') === 0;
+      var wId = svcT === 'con' ? 'urb-date-w' : 'urb-ano-w';
+      var uw = document.getElementById(wId);
+      if (uw) uw.style.display = isUrbKva ? 'none' : 'block';
+      document.querySelectorAll('.rg .ro').forEach(function(btn){
+        var oc = btn.getAttribute('onclick') || '';
+        if (oc.indexOf("togUrb('"+svcT+"'") !== -1) {
+          btn.classList.remove('sel');
+          if ((isUrbKva && oc.indexOf(',true,') !== -1) || (!isUrbKva && oc.indexOf(',false,') !== -1)) btn.classList.add('sel');
+        }
+      });
+    }
+  });
+  // Protection batterie Consuel
+  var batProt = document.getElementById('f-bat-prot');
+  if (batProt && batProt.value) {
+    var bpVal = batProt.value;
+    var bpMap = {slt:'SLT',tbts:'TBTS / TBTP',sep:'Séparation électrique'};
+    document.querySelectorAll('.rg .ro').forEach(function(btn){
+      var oc = btn.getAttribute('onclick') || '';
+      if (oc.indexOf('togBatProt') !== -1) {
+        btn.classList.remove('sel');
+        Object.keys(bpMap).forEach(function(k){ if (oc.indexOf("'"+k+"'") !== -1 && bpMap[k] === bpVal) btn.classList.add('sel'); });
+      }
+    });
+  }
+  // Fonctionnement autonome batterie
+  var batAuto = document.getElementById('f-bat-auto');
+  if (batAuto && batAuto.value) {
+    var isAutoOui = batAuto.value.indexOf('Oui') === 0;
+    document.querySelectorAll('.rg .ro').forEach(function(btn){
+      var oc = btn.getAttribute('onclick') || '';
+      if (oc.indexOf('togBatAuto') !== -1) {
+        btn.classList.remove('sel');
+        if ((isAutoOui && oc.indexOf('true') !== -1) || (!isAutoOui && oc.indexOf('false') !== -1)) btn.classList.add('sel');
+      }
+    });
+  }
+}
+
 // ── Save
 function initiales(str) {
   if (!str) return 'X';
@@ -740,16 +1086,16 @@ function validateRequired() {
   });
 
   // 4. Calepinage : photo OU description (urbanisme + complet)
-  var isUrb = ST.svc === 'urb' || ST.svc === 'ful';
+  var isUrb = ST.svcs.indexOf('urb') >= 0;
   if (isUrb && !checkCalepinage()) missing.push('Calepinage (photo et/ou description)');
 
   // 5. Photos obligatoires : vérifier que les zones upload ont la classe 'ok'
   var uploadChecks = [];
-  if (ST.svc === 'urb' || ST.svc === 'ful') {
+  if (ST.svcs.indexOf('urb') >= 0) {
     uploadChecks.push({id:'ua-l', label:'Photo lointaine'});
     uploadChecks.push({id:'ua-p', label:'Photo proche'});
   }
-  if (ST.svc === 'rac' || ST.svc === 'ful') {
+  if (ST.svcs.indexOf('rac') >= 0) {
     uploadChecks.push({id:'ua-f', label:'Facture d\'électricité (PDL visible)'});
     uploadChecks.push({id:'ua-t', label:'Photo du TGBT'});
     uploadChecks.push({id:'ua-k', label:'Photo Linky / CCPI'});
@@ -853,6 +1199,7 @@ function collectPhotos() {
     'fi-f':   'facture_pdl',
     'fi-t':   'photo_tgbt',
     'fi-k':   'photo_linky',
+    'fi-ano': 'photo_ano',
   };
 
   var promises = [];
@@ -892,7 +1239,7 @@ function showSuccess(ref, instEmail) {
     +'Confirmation envoyée à <strong>'+instEmail+'</strong> et à <strong>residentiel@kva-be.com</strong>.';
   document.getElementById('succ-r').textContent='📋 Référence : '+ref;
   var mandatHtml = '';
-  if (ST.svc === 'urb' || ST.svc === 'rac' || ST.svc === 'ful') {
+  if (ST.svcs.indexOf('urb') >= 0 || ST.svcs.indexOf('rac') >= 0) {
     mandatHtml = '<div style="margin-top:20px;background:rgba(14,165,233,.1);border:1px solid rgba(14,165,233,.3);border-left:4px solid #0ea5e9;border-radius:8px;padding:14px 18px;font-size:.88rem;color:#0d1b2a;display:flex;align-items:flex-start;gap:12px;text-align:left">'
       +'<span style="font-size:1.4rem;flex-shrink:0">&#9993;</span>'
       +'<span><strong style="display:block;margin-bottom:4px">Mandat électronique</strong>'
@@ -912,7 +1259,7 @@ function doSaveClose() {
   var instEmail = getVal('inst-email');
   var ref       = getVal('inst-ref') || mkRef();
   var svcLabels = {urb:'Urbanisme',rac:'Raccordement',con:'Consuel',ful:'Dossier Complet'};
-  var svcLabel  = svcLabels[ST.svc] || ST.svc;
+  var svcLabel = getSvcLabel();
 
   // Vérification config EmailJS
   if (EJS.publicKey === 'VOTRE_PUBLIC_KEY') {
@@ -962,6 +1309,8 @@ function doSaveClose() {
       bat_modele:    stoVisible ? getVal('f-bat-modele') : '',
       bat_nb:        stoVisible ? getVal('f-bat-nb')     : '',
       bat_amperage:  stoVisible ? getVal('f-bat-amperage')+' A' : '',
+      bat_prot:      stoVisible ? getVal('f-bat-prot') : '',
+      bat_auto:      stoVisible ? getVal('f-bat-auto') : '',
       // Raccordement
       branchement:   getVal('f-branchement'),
       regime:        getVal('f-regime'),
@@ -969,6 +1318,26 @@ function doSaveClose() {
       // Consuel
       protection_dc: getVal('f-protection-dc'),
       date_pose:     getVal('f-date-pose'),
+      chainag:       getVal('f-chainag'),
+      // Branchement (commun con/rac)
+      branchement:   getVal('f-branchement'),
+      // Urbanisme consent
+      urb_kva: (getVal('f-urb-kva-rac') || getVal('f-urb-kva-con')),
+      urb_date:      getVal('f-urb-date'),
+      urb_ano:       getVal('f-urb-ano'),
+      // Augmentation de puissance
+      aug_oui:       getVal('f-aug-oui'),
+      aug_pkwc_exist:getVal('f-aug-pkwc-exist') ? getVal('f-aug-pkwc-exist')+' kWc' : '',
+      aug_inj_exist: getVal('f-aug-inj-exist') ? getVal('f-aug-inj-exist')+' kVA' : '',
+      aug_bta:       getVal('f-aug-bta'),
+      aug_ond_exist: getVal('f-aug-ond-exist'),
+      aug_pieces:    getVal('f-aug-pieces'),
+      aug_date_ms:   getVal('f-aug-date-ms'),
+      // Batteries Consuel
+      bat_dc_bat:    getVal('f-bat-dc-bat'),
+      bat_slt:       getVal('f-bat-slt'),
+      bat_tbts:      getVal('f-bat-tbts'),
+      bat_sep:       getVal('f-bat-sep'),
       // Urbanisme
       calepinage:    getVal('f-calepinage'),
       // Commentaire
@@ -980,6 +1349,7 @@ function doSaveClose() {
       facture_pdl:     '',
       photo_tgbt:      '',
       photo_linky:     '',
+      photo_ano:       '',
     };
 
  // Injecter les URLs Cloudinary
@@ -998,7 +1368,7 @@ photos.forEach(function(p) {
           inst_email:instEmail,
           client_nom:getVal('f-nom') + ' ' + getVal('f-prenom'),
           date_envoi:params.date_envoi,
-          mandat:    (ST.svc==='urb'||ST.svc==='rac'||ST.svc==='ful')
+          mandat:    (ST.svcs.indexOf('urb') >= 0 || ST.svcs.indexOf('rac') >= 0)
                      ? 'Si le mandat de représentation n\'a pas encore été signé par votre client, il lui sera envoyé automatiquement dans les 48 heures.'
                      : '',
         };
@@ -1054,7 +1424,7 @@ function collectFormData() {
     inst_nom:  getVal('inst-nom'),
     inst_email:getVal('inst-email'),
     inst_ref:  getVal('inst-ref'),
-    svc:  ST.svc,
+    svc: getSvc(), svcs: ST.svcs.slice(),
     type: ST.type,
     // Profil client commun (transverse à tous les services)
     nom:    getVal('f-nom'),
@@ -1085,11 +1455,15 @@ function saveClientProfile(ref) {
   // Collecter tous les champs techniques avec id (panneaux, onduleurs, batteries...)
   var techFields = {};
   var techIds = [
-    'f-pan-marque','f-pan-modele','f-pan-nb',
+    'f-pan-marque','f-pan-modele','f-pan-nb','f-pan-wc-diff','f-pan-wc',
     'f-ond-marque','f-ond-modele','f-ond-nb',
     'f-bat-marque','f-bat-modele','f-bat-nb','f-bat-amperage',
+    'f-bat-prot','f-bat-auto',
     'f-branchement','f-regime','cocon','f-autre-cocon',
-    'f-protection-dc','f-date-pose','f-calepinage','f-commentaire'
+    'f-protection-dc','f-date-pose','f-calepinage','f-commentaire',
+    'f-chainag',
+    'f-aug-oui','f-aug-pkwc-exist','f-aug-inj-exist','f-aug-bta','f-aug-ond-exist','f-aug-pieces','f-aug-date-ms',
+    'f-urb-kva-con','f-urb-date','f-urb-kva-rac','f-urb-ano'
   ];
   techIds.forEach(function(id){
     var v = getVal(id);
@@ -1197,6 +1571,9 @@ function applyClientProfile(profile) {
   var cocon = document.getElementById('cocon');
   var autreW = document.getElementById('autre-w');
   if (cocon && autreW) autreW.style.display = cocon.value === 'Autre' ? 'block' : 'none';
+
+  // Restaurer les états visuels des toggles
+  restoreAllToggleStates();
 }
 
 function restoreFormData(data) {
@@ -1205,7 +1582,17 @@ function restoreFormData(data) {
   if (refEl) refEl.value = data.inst_ref || data.ref || '';
 
   // 2. Sélectionner le service sauvegardé
-  if (data.svc) selSvc(data.svc);
+  if (data.svcs && data.svcs.length) {
+    ST.svcs = data.svcs.slice();
+    ST.svc = getSvc();
+    updateSvcVisual();
+  } else if (data.svc) {
+    // Compat anciens dossiers sauvegardés avec svc string
+    var svcMap = {ful:['urb','rac','con']};
+    ST.svcs = svcMap[data.svc] || [data.svc];
+    ST.svc = getSvc();
+    updateSvcVisual();
+  }
 
   // 3. Aller à l'étape 3 (buildForm) — bypass validation goStep car données déjà validées
   ['s1','s2','s3','s4'].forEach(function(id){ document.getElementById(id).style.display='none'; });
@@ -1251,6 +1638,9 @@ function restoreFormData(data) {
     var cocon = document.getElementById('cocon');
     var autreW = document.getElementById('autre-w');
     if (cocon && autreW) autreW.style.display = cocon.value === 'Autre' ? 'block' : 'none';
+
+    // 5d. Restaurer tous les états visuels des nouveaux toggles
+    restoreAllToggleStates();
 
     // 6. Bannière de confirmation
     var body = document.getElementById('fbody');
@@ -1394,7 +1784,7 @@ function buildRecap() {
 
   // Section projet
   rows.push(recapSection('&#9728;&#65039; Projet', [
-    recapRow('Service',       svcLabels[ST.svc] || ST.svc),
+    recapRow('Service',       getSvcLabel()),
     recapRow('Type de projet',projChecked.join(', '))
   ]));
 
@@ -1417,7 +1807,9 @@ function buildRecap() {
       recapRow('Marque batteries',  getVal('f-bat-marque')),
       recapRow('Modèle batteries',  getVal('f-bat-modele')),
       recapRow('Nombre batteries',  getVal('f-bat-nb')),
-      recapRow('Ampérage protection', getVal('f-bat-amperage') ? getVal('f-bat-amperage')+' A' : '')
+      recapRow('Ampérage protection', getVal('f-bat-amperage') ? getVal('f-bat-amperage')+' A' : ''),
+      recapRow('Protection batterie', getVal('f-bat-prot')),
+      recapRow('Fonctionnement autonome', getVal('f-bat-auto'))
     ]));
   }
 
@@ -1427,14 +1819,45 @@ function buildRecap() {
     recapRow('Régime',         getVal('f-regime')),
     recapRow('Co-contractant', getVal('cocon') === 'Autre' ? getVal('f-autre-cocon') : getVal('cocon'))
   ].filter(function(r){ return r; });
+  // Pour Consuel seul, branchement est dans la section Consuel, pas ici
+  if (ST.svcs.indexOf('rac') < 0 && ST.svcs.indexOf('con') >= 0) elecRows = elecRows.filter(function(r){ return r.indexOf('Branchement') === -1; });
   if (elecRows.length) rows.push(recapSection('&#9889; Raccordement', elecRows));
 
   // Section Consuel
   var consRows = [
+    recapRow('Type de branchement', getVal('f-branchement')),
     recapRow('Protection DC',  getVal('f-protection-dc')),
-    recapRow('Date de pose',   getVal('f-date-pose'))
+    recapRow('Date de pose',   getVal('f-date-pose')),
+    recapRow('Chaînage panneaux', getVal('f-chainag'))
   ].filter(function(r){ return r; });
   if (consRows.length) rows.push(recapSection('&#128296; Consuel', consRows));
+
+  // Section Urbanisme consent (hors dossier complet)
+  if (!(ST.svcs.indexOf('urb') >= 0 && ST.svcs.indexOf('rac') >= 0 && ST.svcs.indexOf('con') >= 0)) {
+    var urbSvcType = ST.svcs.indexOf('rac') >= 0 ? 'rac' : 'con';
+    var urbKva = getVal('f-urb-kva-'+urbSvcType);
+    if (urbKva) {
+      var urbCRows = [recapRow('Urbanisme pris en charge par KVA', urbKva)];
+      if (urbKva.indexOf('Non') === 0) {
+        urbCRows.push(recapRow('Date approbation mairie', getVal('f-urb-date')));
+        urbCRows.push(recapRow('ANO / Récépissé', getVal('f-urb-ano')));
+      }
+      rows.push(recapSection('&#127968; Urbanisme (statut)', urbCRows));
+    }
+  }
+
+  // Section augmentation de puissance
+  var augOui = getVal('f-aug-oui');
+  if (augOui && augOui === 'Oui') {
+    var augRows = [recapRow('Augmentation de puissance', augOui)];
+    augRows.push(recapRow('Puissance crête existante', getVal('f-aug-pkwc-exist') ? getVal('f-aug-pkwc-exist')+' kWc' : ''));
+    augRows.push(recapRow('Puissance injection existante', getVal('f-aug-inj-exist') ? getVal('f-aug-inj-exist')+' kVA' : ''));
+    augRows.push(recapRow('N° BTA contrat existant', getVal('f-aug-bta')));
+    augRows.push(recapRow('Onduleurs existants', getVal('f-aug-ond-exist')));
+    augRows.push(recapRow('Pièces modifiées', getVal('f-aug-pieces')));
+    augRows.push(recapRow('Date mise en service ancienne install.', getVal('f-aug-date-ms')));
+    rows.push(recapSection('&#128268; Modification d\'installation', augRows.filter(function(r){ return r; })));
+  }
 
   // Section urbanisme
   var urbRows = [
@@ -1487,10 +1910,10 @@ function countRequired() {
 
   // Photos obligatoires
   var uploadIds = [];
-  if (ST.svc === 'urb' || ST.svc === 'ful') {
+  if (ST.svcs.indexOf('urb') >= 0) {
     uploadIds.push('ua-l','ua-p');
   }
-  if (ST.svc === 'rac' || ST.svc === 'ful') {
+  if (ST.svcs.indexOf('rac') >= 0) {
     uploadIds.push('ua-f','ua-t','ua-k');
   }
   uploadIds.forEach(function(id){
@@ -1500,7 +1923,7 @@ function countRequired() {
   });
 
   // Calepinage (urb/ful)
-  if (ST.svc === 'urb' || ST.svc === 'ful') {
+  if (ST.svcs.indexOf('urb') >= 0) {
     total++;
     if (checkCalepinage()) filled++;
   }
