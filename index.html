@@ -826,17 +826,25 @@ function consHTML(includeBranchement) {
   var branchRow = includeBranchement
     ? '<div class="fgi"><label class="lbl">Type de branchement <span class="req">*</span></label>'
       + '<select id="f-branchement" data-required="Type de branchement"><option value="">— Sélectionner —</option><option>Monophasé</option><option>Triphasé</option></select></div>'
+      + '<div class="fgi"><label class="lbl">Régime de raccordement <span class="req">*</span></label>'
+      + '<select id="f-regime" data-required="Régime de raccordement"><option value="">— Sélectionner —</option>'
+      + '<option>Autoconsommation totale</option><option>Vente de surplus</option><option>Vente totale</option>'
+      + '</select></div>'
     : '';
   return '<div class="fg">'
     + branchRow
     +'<div class="fgi"><label class="lbl">Protection DC</label>'
-    +'<select id="f-protection-dc"><option value="">— Sélectionner —</option>'
+    +'<select id="f-protection-dc" onchange="togProtDC(this)"><option value="">— Sélectionner —</option>'
     +'<option>Présente (Disjoncteur)</option><option>Présente (Fusible)</option>'
     +'<option>Absente</option><option>Non applicable (micro-onduleur)</option>'
     +'</select></div>'
     +'<div class="fgi"><label class="lbl">Date de pose des panneaux <span class="req">*</span></label>'
     +'<input id="f-date-pose" type="date" data-required="Date de pose des panneaux"></div>'
     +'</div>'
+    +'<div id="prot-dc-amp-w" style="display:none"><div class="fg"><div class="fgi">'
+    +'<label class="lbl">Ampérage de la protection DC <span class="req">*</span></label>'
+    +'<input id="f-prot-dc-amp" type="number" data-cond-req="Ampérage protection DC" placeholder="ex: 15" min="1">'
+    +'</div></div></div>'
     +'<div class="fgi full" style="margin-top:14px">'
     +'<label class="lbl">Description du chaînage des panneaux <span style="font-weight:400;color:var(--gray-500)">(pour le schéma unifilaire)</span></label>'
     +'<div class="alert" style="margin:6px 0 8px;padding:10px;font-size:.8rem">&#128196; <span>Décrivez le câblage DC : nombre de chaînes et panneaux par chaîne. Ex : <strong>Chaîne 1 : 3 panneaux — Chaîne 2 : 3 panneaux</strong></span></div>'
@@ -999,6 +1007,13 @@ function togPanWc(val, btn) {
   if (w) w.style.display = val ? 'block' : 'none';
 }
 
+// ── Protection DC ampérage
+function togProtDC(sel) {
+  var show = sel.value.indexOf('Présente') === 0;
+  var w = document.getElementById('prot-dc-amp-w');
+  if (w) w.style.display = show ? 'block' : 'none';
+}
+
 // ── Augmentation de puissance
 function togAug(val, btn) {
   btn.closest('.rg').querySelectorAll('.ro').forEach(function(b){ b.classList.remove('sel'); });
@@ -1096,6 +1111,13 @@ function restoreAllToggleStates() {
         if ((isAutoOui && oc.indexOf('true') !== -1) || (!isAutoOui && oc.indexOf('false') !== -1)) btn.classList.add('sel');
       }
     });
+  }
+  // Protection DC ampérage
+  var protDCSel = document.getElementById('f-protection-dc');
+  if (protDCSel && protDCSel.value) {
+    var showAmp = protDCSel.value.indexOf('Présente') === 0;
+    var ampW = document.getElementById('prot-dc-amp-w');
+    if (ampW) ampW.style.display = showAmp ? 'block' : 'none';
   }
 }
 
@@ -1466,6 +1488,7 @@ function doSaveClose() {
       cocontractant: cocon,
       // Consuel
       protection_dc: getVal('f-protection-dc'),
+      prot_dc_amp:   (getVal('f-protection-dc') && getVal('f-protection-dc').indexOf('Présente') === 0) ? (getVal('f-prot-dc-amp') ? getVal('f-prot-dc-amp')+' A' : '') : '',
       date_pose:     getVal('f-date-pose'),
       chainag:       getVal('f-chainag'),
       // Branchement (commun con/rac)
@@ -1988,6 +2011,7 @@ function buildRecap() {
   var consRows = [
     recapRow('Type de branchement', getVal('f-branchement')),
     recapRow('Protection DC',  getVal('f-protection-dc')),
+    (getVal('f-protection-dc') && getVal('f-protection-dc').indexOf('Présente') === 0) ? recapRow('Ampérage protection DC', getVal('f-prot-dc-amp') ? getVal('f-prot-dc-amp') + ' A' : '—') : null,
     recapRow('Date de pose',   getVal('f-date-pose')),
     recapRow('Chaînage panneaux', getVal('f-chainag'))
   ].filter(function(r){ return r; });
