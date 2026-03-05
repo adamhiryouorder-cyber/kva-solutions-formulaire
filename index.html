@@ -1795,6 +1795,8 @@ function buildRecap() {
     recapRow('Marque panneaux',  getVal('f-pan-marque')),
     recapRow('Modèle panneaux',  getVal('f-pan-modele')),
     recapRow('Nombre panneaux',  getVal('f-pan-nb')),
+    recapRow('Injection ≠ puissance max onduleurs ?', getVal('f-pan-wc-diff') || 'Non'),
+    getVal('f-pan-wc-diff') === 'Oui' ? recapRow('Puissance d\'injection à déclarer', getVal('f-pan-wc') ? getVal('f-pan-wc') + ' kVA' : '—') : null,
     recapRow('Marque onduleurs', getVal('f-ond-marque')),
     recapRow('Modèle onduleurs', getVal('f-ond-modele')),
     recapRow('Nombre onduleurs', getVal('f-ond-nb'))
