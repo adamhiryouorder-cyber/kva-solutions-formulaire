@@ -1941,6 +1941,11 @@ function recapSection(title, rows) {
 }
 
 function buildRecap() {
+  var isUrb = ST.svcs.indexOf('urb') >= 0;
+  var isRac = ST.svcs.indexOf('rac') >= 0;
+  var isCon = ST.svcs.indexOf('con') >= 0;
+  var isFul = isUrb && isRac && isCon;
+
   var svcLabels = {urb:'Urbanisme',rac:'Raccordement',con:'Consuel',ful:'Dossier Complet'};
   var projLabels = {toiture:'Sur toiture',sol:'Au sol',terrasse:'Toit terrasse',ombriere:'Ombrière',carport:'Carport',pergola:'Pergola',tuiles:'Tuiles solaires'};
 
