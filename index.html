@@ -1328,26 +1328,43 @@ function compressImage(file, maxPx, quality) {
 }
 
 // ── Upload d'un fichier vers Netlify Function -> Cloudinary
-function uploadFileToCloudinary(file) {
+async function uploadFileToCloudinary(file) {
   var form = new FormData();
   form.append('file', file, file.name);
 
-  return fetch('/.netlify/functions/upload', {
+  var res = await fetch('/.netlify/functions/upload', {
     method: 'POST',
     body: form
-  })
-  .then(function(res) {
-    if (!res.ok) {
-  return res.text().then(function(t) {
-    throw new Error('Upload failed: ' + res.status + ' - ' + t);
   });
-}
-    return res.json();
-  })
-  .then(function(json) {
-    if (!json || !json.url) throw new Error('Upload response missing url');
-    return json.url;
-  });
+
+  var rawText = await res.text();
+
+  if (!res.ok) {
+    throw new Error(
+      'Upload failed for "' + file.name + '"'
+      + ' | type=' + (file.type || 'inconnu')
+      + ' | size=' + file.size + ' octets'
+      + ' | status=' + res.status
+      + ' | response=' + rawText
+    );
+  }
+
+  var json;
+  try {
+    json = JSON.parse(rawText);
+  } catch (e) {
+    throw new Error(
+      'Upload response invalide pour "' + file.name + '" : ' + rawText
+    );
+  }
+
+  if (!json || !json.url) {
+    throw new Error(
+      'Upload response missing url pour "' + file.name + '" : ' + rawText
+    );
+  }
+
+  return json.url;
 }
 
 // ── Collecte et upload de toutes les photos (renvoie des URLs Cloudinary)
