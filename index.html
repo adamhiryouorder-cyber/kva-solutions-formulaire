@@ -1323,7 +1323,7 @@ function compressImage(file, maxPx, quality) {
       URL.revokeObjectURL(url);
       resolve({ name: file.name.replace(/\.[^.]+$/, '.jpg'), b64: b64, type: 'image/jpeg' });
     };
-    img.src = url;
+    img.src = url;  
   });
 }
 
@@ -1341,11 +1341,11 @@ async function uploadFileToCloudinary(file) {
 
   if (!res.ok) {
     throw new Error(
-      'Upload failed for "' + file.name + '"'
+      'Échec de l’upload du fichier "' + file.name + '"'
       + ' | type=' + (file.type || 'inconnu')
-      + ' | size=' + file.size + ' octets'
+      + ' | taille=' + file.size + ' octets'
       + ' | status=' + res.status
-      + ' | response=' + rawText
+      + ' | réponse=' + rawText
     );
   }
 
@@ -1354,21 +1354,34 @@ async function uploadFileToCloudinary(file) {
     json = JSON.parse(rawText);
   } catch (e) {
     throw new Error(
-      'Upload response invalide pour "' + file.name + '" : ' + rawText
+      'Réponse upload invalide pour "' + file.name + '" : ' + rawText
     );
   }
 
   if (!json || !json.url) {
     throw new Error(
-      'Upload response missing url pour "' + file.name + '" : ' + rawText
+      'Aucune URL retournée pour "' + file.name + '" : ' + rawText
     );
   }
 
   return json.url;
 }
+function validateFileBeforeUpload(file) {
+  var MAX_FILE_SIZE = 7 * 1024 * 1024; // 7 Mo
+  var ref = (getVal('inst-ref') || '').trim();
+
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error(
+      'Le fichier "' + file.name + '" est trop volumineux ('
+      + (Math.round((file.size / 1024 / 1024) * 10) / 10)
+      + ' Mo). Merci de le compresser puis de l’envoyer par mail à residentiel@kva-be.com'
+      + (ref ? ' avec la référence "' + ref + '" en objet.' : ' avec la référence du dossier en objet.')
+    );
+  }
+}
 
 // ── Collecte et upload de toutes les photos (renvoie des URLs Cloudinary)
-function collectPhotos() {
+async function collectPhotos() {
   var fileMap = {
     'fi-l':   'photo_lointaine',
     'fi-p':   'photo_proche',
@@ -1379,30 +1392,42 @@ function collectPhotos() {
     'fi-ano': 'photo_ano',
   };
 
-  var promises = [];
+  var results = [];
 
   Object.keys(fileMap).forEach(function(id) {
     var inp = document.getElementById(id);
     if (inp && inp.files && inp.files[0]) {
-      promises.push(
-        uploadFileToCloudinary(inp.files[0]).then(function(url) {
-          return { key: fileMap[id], url: url };
-        })
-      );
+      validateFileBeforeUpload(inp.files[0]);
     }
   });
 
-  // Pièces jointes libres (multi-fichiers)
   var libreFiles = window._libreFiles || [];
-  libreFiles.forEach(function(file, i) {
-    promises.push(
-      uploadFileToCloudinary(file).then(function(url) {
-        return { key: 'att_libre_' + i, url: url, name: file.name };
-      })
-    );
+  libreFiles.forEach(function(file) {
+    validateFileBeforeUpload(file);
   });
 
-  return Promise.all(promises);
+  for (const id of Object.keys(fileMap)) {
+    var inp = document.getElementById(id);
+    if (inp && inp.files && inp.files[0]) {
+      var url = await uploadFileToCloudinary(inp.files[0]);
+      results.push({
+        key: fileMap[id],
+        url: url
+      });
+    }
+  }
+
+  for (let i = 0; i < libreFiles.length; i++) {
+    var file = libreFiles[i];
+    var url = await uploadFileToCloudinary(file);
+    results.push({
+      key: 'att_libre_' + i,
+      url: url,
+      name: file.name
+    });
+  }
+
+  return results;
 }
 // ── Affiche un écran de chargement pendant l'envoi
 function showSending() {
@@ -1576,13 +1601,14 @@ if (libreItems.length > 0) {
         saveClientProfile(ref);
         showSuccess(ref, instEmail);
       });
-  }).catch(function(err) {
-    hideSending();
-    console.error('EmailJS error:', err);
-    alert('Erreur lors de l\'envoi : ' + (err.text || err.message || JSON.stringify(err))
-      + '\n\nVérifiez votre connexion et les clés EmailJS.');
-  });
-}
+}).catch(function(err) {
+  hideSending();
+  console.error('Erreur envoi / upload :', err);
+  alert(
+    'Erreur lors de l’envoi : '
+    + (err && err.message ? err.message : JSON.stringify(err))
+  );
+});
 
 function doSaveReturn() {
   // Nom + Prénom client obligatoires pour générer une référence unique
