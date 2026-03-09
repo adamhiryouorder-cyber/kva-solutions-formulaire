@@ -360,65 +360,48 @@ function updateSvcVisual() {
 
 // ── Navigation
 function goStep(n) {
-  if (n===2) {
-    var instNom   = document.getElementById('inst-nom')   ? document.getElementById('inst-nom').value.trim()   : '';
-    var instEmail = document.getElementById('inst-email') ? document.getElementById('inst-email').value.trim() : '';
-    if (!instNom)   { alert("Le nom de l'installateur est obligatoire."); document.getElementById('inst-nom').focus(); return; }
-    if (!instEmail) { alert("L'email de l'installateur est obligatoire."); document.getElementById('inst-email').focus(); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(instEmail)) { alert("L'adresse email de l'installateur n'est pas valide."); document.getElementById('inst-email').focus(); return; }
-  }
-  if (n===2) {
-    var fcontClear = document.getElementById('fcont');
-    if (fcontClear) {
-      ST.savedFields = ST.savedFields || {};
-      fcontClear.querySelectorAll('input, select, textarea').forEach(function(el){
-        if (el.id) ST.savedFields[el.id] = el.value;
-      });
-      var projChecked = [];
-      document.querySelectorAll('.proj-opt input:checked').forEach(function(cb){ projChecked.push(cb.value); });
-      ST.savedProj = projChecked;
-      fcontClear.innerHTML = '';
+  if (n === 2) {
+    var instNom = document.getElementById('inst-nom')
+      ? document.getElementById('inst-nom').value.trim()
+      : '';
+    var instEmail = document.getElementById('inst-email')
+      ? document.getElementById('inst-email').value.trim()
+      : '';
+
+    if (!instNom) {
+      alert("Le nom de l'installateur est obligatoire.");
+      document.getElementById('inst-nom').focus();
+      return;
+    }
+
+    if (!instEmail) {
+      alert("L'email de l'installateur est obligatoire.");
+      document.getElementById('inst-email').focus();
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(instEmail)) {
+      alert("L'adresse email de l'installateur n'est pas valide.");
+      document.getElementById('inst-email').focus();
+      return;
     }
   }
-  if (n===3 && ST.svcs.length === 0) { alert('Veuillez sélectionner au moins un service.'); return; }
-  if (n===4) {
-    var missing = validateRequired();
-    if (!getVal('inst-nom') || !getVal('inst-email')) { alert("Retournez a l'etape 1 : le nom et l'email de l'installateur sont obligatoires."); return; }
-    if (missing.length > 0) { highlightMissing(); alert('Champs obligatoires manquants (' + missing.length + '):\n\n• ' + missing.join('\n• ')); return; }
-    document.querySelectorAll('#fcont input, #fcont select, #fcont textarea').forEach(function(el){ el.style.borderColor=''; });
+
+  if (n === 3 && ST.svcs.length === 0) {
+    alert("Sélectionnez au moins un service.");
+    return;
   }
-  ['s1','s2','s3','s4','s5'].forEach(function(id){ document.getElementById(id).style.display='none'; });
-  document.getElementById('s'+n).style.display = 'block';
-  ['d1','d2','d3','d4'].forEach(function(id,i){
+
+  if (n === 4) {
+    buildRecap();
+  }
+
+  ['s1', 's2', 's3', 's4', 's5'].forEach(function(id, i) {
     var el = document.getElementById(id);
-    if (!el) return;
-    el.className = 'dot' + (i+1<n?' done':i+1===n?' active':'');
+    if (el) el.style.display = (i === n - 1) ? '' : 'none';
   });
-  // Steps 1+2 = 0%, step 3 recalculated dynamically as user fills fields
-  if (n < 3) {
-    document.getElementById('pfill').style.width = '0%';
-    document.getElementById('ppct').textContent  = '0%';
-    var stepLabels = {1:'Votre installation', 2:'Choix du service'};
-    document.getElementById('ptxt').textContent = stepLabels[n] || 'Étape '+n;
-  }
-  if (n===3) {
-    var fcont3 = document.getElementById('fcont');
-    var formAlreadyBuilt = fcont3 && fcont3.querySelector('input');
-    if (!formAlreadyBuilt) {
-      buildForm();
-    } else {
-      setTimeout(function(){
-        if (ST.map) { ST.map.invalidateSize(); }
-        updateProgress();
-      }, 150);
-    }
-  }
-  if (n===4) { buildRecap(); 
-    document.getElementById('pfill').style.width='100%';
-    document.getElementById('ppct').textContent='100%';
-    document.getElementById('ptxt').textContent='Prêt à envoyer ✓';
-  }
-  window.scrollTo({top:0, behavior:'smooth'});
+
+  updateProgress(n);
 }
 
 function urbConsentHTML(svcType, withUrb) {
