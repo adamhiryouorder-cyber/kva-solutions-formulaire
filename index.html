@@ -1351,7 +1351,7 @@ function uploadFileToCloudinary(file) {
 }
 
 // ── Collecte et upload de toutes les photos (renvoie des URLs Cloudinary)
-async function collectPhotos() {
+function collectPhotos() {
   var fileMap = {
     'fi-l':   'photo_lointaine',
     'fi-p':   'photo_proche',
@@ -1362,33 +1362,30 @@ async function collectPhotos() {
     'fi-ano': 'photo_ano',
   };
 
-  var results = [];
+  var promises = [];
 
-  // Fichiers simples
-  for (const id of Object.keys(fileMap)) {
+  Object.keys(fileMap).forEach(function(id) {
     var inp = document.getElementById(id);
     if (inp && inp.files && inp.files[0]) {
-      var url = await uploadFileToCloudinary(inp.files[0]);
-      results.push({
-        key: fileMap[id],
-        url: url
-      });
+      promises.push(
+        uploadFileToCloudinary(inp.files[0]).then(function(url) {
+          return { key: fileMap[id], url: url };
+        })
+      );
     }
-  }
+  });
 
-  // Pièces jointes libres
+  // Pièces jointes libres (multi-fichiers)
   var libreFiles = window._libreFiles || [];
-  for (let i = 0; i < libreFiles.length; i++) {
-    var file = libreFiles[i];
-    var url = await uploadFileToCloudinary(file);
-    results.push({
-      key: 'att_libre_' + i,
-      url: url,
-      name: file.name
-    });
-  }
+  libreFiles.forEach(function(file, i) {
+    promises.push(
+      uploadFileToCloudinary(file).then(function(url) {
+        return { key: 'att_libre_' + i, url: url, name: file.name };
+      })
+    );
+  });
 
-  return results;
+  return Promise.all(promises);
 }
 // ── Affiche un écran de chargement pendant l'envoi
 function showSending() {
