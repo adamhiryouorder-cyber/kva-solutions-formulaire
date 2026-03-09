@@ -1357,7 +1357,7 @@ function validateFileBeforeUpload(file) {
     throw new Error(
       'Le fichier "' + file.name + '" est trop volumineux ('
       + (Math.round((file.size / 1024 / 1024) * 10) / 10)
-      + ' Mo). Merci de le compresser puis de l’envoyer par mail à residentiel@kva-be.com'
+      + ' Mo). Merci de le compresser et/ou de l’envoyer par mail à residentiel@kva-be.com'
       + (ref ? ' avec la référence "' + ref + '" en objet.' : ' avec la référence du dossier en objet.')
     );
   }
