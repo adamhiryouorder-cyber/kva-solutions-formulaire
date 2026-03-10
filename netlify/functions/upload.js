@@ -49,6 +49,7 @@ function uploadToCloudinary(file, folder) {
         access_mode: "public",
         use_filename: true,
         unique_filename: true,
+        ...(isPdf && { format: "pdf" }),
       },
       (err, result) => {
         if (err) return reject(err);
@@ -87,5 +88,6 @@ exports.handler = async (event) => {
     };
   }
 };
+
 
 
