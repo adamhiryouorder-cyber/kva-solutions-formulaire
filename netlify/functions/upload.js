@@ -41,6 +41,7 @@ function uploadToCloudinary(file) {
       {
         folder: "kva-form",
         resource_type: isPdf ? "raw" : "image",
+        format: isPdf ? "pdf" : undefined,
         type: "upload",
         use_filename: true,
         unique_filename: true,
@@ -77,3 +78,4 @@ exports.handler = async (event, context) => {
     };
   }
 };
+
