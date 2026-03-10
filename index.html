@@ -481,98 +481,109 @@ function sec(t, body) {
 }
 
 function buildForm() {
-  var svcTitles = {
-    urb:['Formulaire Urbanisme','Déclaration préalable de travaux'],
-    rac:['Formulaire Raccordement','Demande de raccordement ENEDIS'],
-    con:['Formulaire Consuel','Attestation de conformité électrique'],
-    ful:['Dossier Complet','Urbanisme + Raccordement + Consuel'],
-    'con+rac':['Dossier Raccordement + Consuel','Raccordement ENEDIS + Attestation de conformité'],
-    'rac+urb':['Dossier Urbanisme + Raccordement','Déclaration préalable + Raccordement ENEDIS'],
-    'con+urb':['Dossier Urbanisme + Consuel','Déclaration préalable + Attestation de conformité']
-  };
-  var svc = getSvc();
-  var t = svcTitles[svc] || [svc, ''];
-  document.getElementById('ftitle').textContent = t[0];
-  document.getElementById('fsub').textContent   = t[1];
+  try {
+    var svcTitles = {
+      urb:['Formulaire Urbanisme','Déclaration préalable de travaux'],
+      rac:['Formulaire Raccordement','Demande de raccordement ENEDIS'],
+      con:['Formulaire Consuel','Attestation de conformité électrique'],
+      ful:['Dossier Complet','Urbanisme + Raccordement + Consuel'],
+      'con+rac':['Dossier Raccordement + Consuel','Raccordement ENEDIS + Attestation de conformité'],
+      'rac+urb':['Dossier Urbanisme + Raccordement','Déclaration préalable + Raccordement ENEDIS'],
+      'con+urb':['Dossier Urbanisme + Consuel','Déclaration préalable + Attestation de conformité']
+    };
 
-  var isUrb = ST.svcs.indexOf('urb') >= 0;
-  var isRac = ST.svcs.indexOf('rac') >= 0;
-  var isCon = ST.svcs.indexOf('con') >= 0;
-  var isFul = isUrb && isRac && isCon;
+    var svc = getSvc();
+    var t = svcTitles[svc] || [svc, ''];
+    document.getElementById('ftitle').textContent = t[0];
+    document.getElementById('fsub').textContent   = t[1];
 
-  var html = '';
-  html += sec('&#128100; Informations personnelles', idHTML());
-  html += sec('&#128205; Localisation', locHTML());
+    var isUrb = ST.svcs.indexOf('urb') >= 0;
+    var isRac = ST.svcs.indexOf('rac') >= 0;
+    var isCon = ST.svcs.indexOf('con') >= 0;
+    var isFul = isUrb && isRac && isCon;
 
-  // ── Modification d'installation (rac ou con uniquement)
-  if (isRac || isCon) {
-    html += sec('&#128268; Modification d\'installation', augPuissanceHTML());
-  }
+    var html = '';
+    html += sec('👤 Informations personnelles', idHTML());
+    html += sec('📍 Localisation', locHTML());
 
-  // ── Matériel unifié : panneaux + onduleurs + batteries dans une seule section
-  // Logique identique à l'original, mais regroupée + batteries intégrées
-  var materielBody = '';
-  if (isUrb) {
-    // Panneaux (style urb, avec champ WC si rac ou con)
-    materielBody += panUrbHTML(isRac || isCon);
-    // Onduleurs uniquement si raccordement
-    if (isRac) materielBody += ondHTML();
-  } else if (isRac || isCon) {
-    // Panneaux + onduleurs ensemble (pas d'urb)
-    materielBody += panRacHTML();
-  }
-  // Batteries : dans la même section
-  if (isRac && !isCon) materielBody += stoHTML('rac');
-  if (isCon)           materielBody += stoHTML('con');
+    if (isRac || isCon) {
+      html += sec('⚡ Modification d\'installation', augPuissanceHTML());
+    }
 
-  if (materielBody) {
-    html += sec('&#9728;&#65039; Installation photovoltaïque &amp; matériel', materielBody);
-  }
+    var materielBody = '';
+    if (isUrb) {
+      materielBody += panUrbHTML(isRac || isCon);
+      if (isRac) materielBody += ondHTML();
+    } else if (isRac || isCon) {
+      materielBody += panRacHTML();
+    }
 
-  // ── Sections spécifiques raccordement / consuel
-  if (isRac) {
-    html += sec('&#128203; Informations électriques', elecHTML());
-  }
-  if (isCon) {
-    html += sec('&#128296; Protection &amp; installation (Consuel)', consHTML(!isRac));
-  }
+    if (isRac && !isCon) materielBody += stoHTML('rac');
+    if (isCon) materielBody += stoHTML('con');
 
-  // ── Démarche urbanisme (question KVA)
-  // Si urbanisme est sélectionné comme démarche, KVA est forcément chargée → pas de question
-  if (!isFul && !isUrb && (isRac || isCon)) {
-    var urbSvcType = isRac ? 'rac' : 'con';
-    html += sec('&#127968; Démarche urbanisme', urbConsentHTML(urbSvcType, false));
-  }
+    if (materielBody) {
+      html += sec('☀️ Installation photovoltaïque & matériel', materielBody);
+    }
 
-  // ── Pièces jointes et photos — toujours en fin de formulaire
-  if (isUrb) html += sec('&#128247; Photos de la propriété', photoUrbHTML());
-  if (isRac) html += sec('&#128247; Documents et photos', photoRacHTML());
-  html += sec('&#128204; Pièces jointes complémentaires', photoLibreHTML());
+    if (isRac) {
+      html += sec('📋 Informations électriques', elecHTML());
+    }
 
-  document.getElementById('fcont').innerHTML = html;
-  setTimeout(function(){
-    initMap();
-    // Restaurer les valeurs sauvegardées avant le changement de démarche
-    if (ST.savedFields) {
-      Object.keys(ST.savedFields).forEach(function(id){
-        var el = document.getElementById(id);
-        if (el && ST.savedFields[id] !== undefined && ST.savedFields[id] !== '') el.value = ST.savedFields[id];
-      });
-      if (ST.savedProj && ST.savedProj.length) {
-        document.querySelectorAll('.proj-opt input').forEach(function(cb){
-          if (ST.savedProj.indexOf(cb.value) >= 0) cb.checked = true;
+    if (isCon) {
+      html += sec('🔧 Protection & installation (Consuel)', consHTML(!isRac));
+    }
+
+    if (!isFul && !isUrb && (isRac || isCon)) {
+      var urbSvcType = isRac ? 'rac' : 'con';
+      html += sec('🏠 Démarche urbanisme', urbConsentHTML(urbSvcType, false));
+    }
+
+    if (isUrb) html += sec('📷 Photos de la propriété', photoUrbHTML());
+    if (isRac) html += sec('📷 Documents et photos', photoRacHTML());
+    html += sec('📎 Pièces jointes complémentaires', photoLibreHTML());
+
+    document.getElementById('fcont').innerHTML = html;
+
+    setTimeout(function(){
+      initMap();
+
+      if (ST.savedFields) {
+        Object.keys(ST.savedFields).forEach(function(id){
+          var el = document.getElementById(id);
+          if (el && ST.savedFields[id] !== undefined && ST.savedFields[id] !== '') {
+            el.value = ST.savedFields[id];
+          }
         });
+
+        if (ST.savedProj && ST.savedProj.length) {
+          document.querySelectorAll('.proj-opt input').forEach(function(cb){
+            if (ST.savedProj.indexOf(cb.value) >= 0) cb.checked = true;
+          });
+        }
+
+        restoreAllToggleStates();
       }
-      restoreAllToggleStates();
-    }
-    var refVal = document.getElementById('inst-ref') ? document.getElementById('inst-ref').value.trim().toUpperCase() : '';
-    if (refVal) {
-      var profile = loadClientProfile(refVal);
-      if (profile) applyClientProfile(profile);
-    }
-    hookProgressListeners();
-    updateProgress();
-  }, 150);
+
+      var refVal = document.getElementById('inst-ref')
+        ? document.getElementById('inst-ref').value.trim().toUpperCase()
+        : '';
+
+      if (refVal) {
+        var profile = loadClientProfile(refVal);
+        if (profile) applyClientProfile(profile);
+      }
+
+      hookProgressListeners();
+      updateProgress();
+    }, 150);
+
+  } catch (e) {
+    console.error('Erreur dans buildForm():', e);
+    document.getElementById('fcont').innerHTML =
+      '<div class="alert alert-warn">Erreur de construction du formulaire : '
+      + (e && e.message ? e.message : e)
+      + '</div>';
+  }
 }
 
 function idHTML() {
