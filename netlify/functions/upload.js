@@ -37,13 +37,14 @@ function parseMultipart(event) {
 function uploadToCloudinary(file, folder) {
   return new Promise((resolve, reject) => {
     const isPdf = file.mimetype === "application/pdf";
+
     const stream = cloudinary.uploader.upload_stream(
       {
         folder,
-        // "auto" au lieu de "raw" : Cloudinary détecte le type et rend le fichier accessible publiquement
-        resource_type: "auto",
-        // "upload" garantit l'accès public sans signed URL
-        type: "upload",
+        // PDFs → "raw" obligatoire pour Cloudinary
+        // Images → "image"
+        resource_type: isPdf ? "raw" : "image",
+        type: "upload", // garantit l'accès public
         use_filename: true,
         unique_filename: true,
         ...(isPdf && { format: "pdf" }),
@@ -51,16 +52,19 @@ function uploadToCloudinary(file, folder) {
       (err, result) => {
         if (err) return reject(err);
 
+        // Pour les PDFs en resource_type "raw", Cloudinary retourne parfois
+        // une URL en /image/upload/ par erreur — on la corrige manuellement
         let url = result.secure_url;
-
-        // fl_attachment force l'ouverture directe du PDF dans le navigateur
         if (isPdf) {
-          url = url.replace("/upload/", "/upload/fl_attachment/");
+          url = url
+            .replace("/image/upload/", "/raw/upload/")
+            .replace("/video/upload/", "/raw/upload/");
         }
 
         resolve({ url });
       }
     );
+
     stream.end(file.buffer);
   });
 }
