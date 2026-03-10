@@ -40,15 +40,14 @@ function uploadToCloudinary(file) {
     const stream = cloudinary.uploader.upload_stream(
       {
         folder: "kva-form",
-        resource_type: isPdf ? "raw" : "image",
-        format: isPdf ? "pdf" : undefined,
+        resource_type: "image",
         type: "upload",
         use_filename: true,
         unique_filename: true,
       },
       (err, result) => {
         if (err) return reject(err);
-        resolve({ url: isPdf ? result.secure_url + ".pdf" : result.secure_url });
+        resolve({ url: result.secure_url });
       }
     );
     stream.end(file.buffer);
@@ -78,5 +77,6 @@ exports.handler = async (event, context) => {
     };
   }
 };
+
 
 
