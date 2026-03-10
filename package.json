@@ -1,8 +1,9 @@
 {
   "name": "kva-site",
-  "private": true,
+  "version": "1.0.0",
   "dependencies": {
+    "@netlify/blobs": "^8.1.0",
     "busboy": "^1.6.0",
-    "cloudinary": "^2.0.0"
+    "cloudinary": "^1.41.3"
   }
 }
