@@ -1,5 +1,6 @@
 const cloudinary = require("cloudinary").v2;
 const Busboy = require("busboy");
+const { createClient } = require("@supabase/supabase-js");
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -34,18 +35,34 @@ function parseMultipart(event) {
   });
 }
 
-async function uploadToCloudinary(file) {
-  const dataUri = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
-  const cleanName = file.filename
-    .replace(/\.pdf$/i, "")
-    .replace(/[^a-zA-Z0-9._-]/g, "_");
-  const result = await cloudinary.uploader.upload(dataUri, {
-    resource_type: "image",
-    folder: "kva-form",
-    public_id: `${Date.now()}_${cleanName}`,
-    access_mode: "public",
-  });
-  return { url: result.secure_url };
+async function uploadFile(file) {
+  const isPdf = file.mimetype === "application/pdf";
+
+  if (isPdf) {
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY
+    );
+    const cleanName = file.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const key = `${Date.now()}_${cleanName}`;
+    const { error } = await supabase.storage
+      .from("kva-pdfs")
+      .upload(key, file.buffer, {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+    if (error) throw new Error(error.message);
+    const { data } = supabase.storage.from("kva-pdfs").getPublicUrl(key);
+    return { url: data.publicUrl };
+  } else {
+    const dataUri = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+    const result = await cloudinary.uploader.upload(dataUri, {
+      resource_type: "image",
+      folder: "kva-form",
+      access_mode: "public",
+    });
+    return { url: result.secure_url };
+  }
 }
 
 exports.handler = async (event, context) => {
@@ -57,7 +74,7 @@ exports.handler = async (event, context) => {
     if (!files.length) {
       return { statusCode: 400, body: "No file received" };
     }
-    const uploaded = await uploadToCloudinary(files[0]);
+    const uploaded = await uploadFile(files[0]);
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
