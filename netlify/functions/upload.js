@@ -45,6 +45,7 @@ function uploadToCloudinary(file) {
       {
         resource_type: isPdf ? "raw" : "image",
         type: "upload",
+        access_mode: "public",   // ← ajoute cette ligne
         use_filename: true,
         unique_filename: true,
         ...(isPdf && { public_id: publicId }),
@@ -81,4 +82,5 @@ exports.handler = async (event, context) => {
     };
   }
 };
+
 
