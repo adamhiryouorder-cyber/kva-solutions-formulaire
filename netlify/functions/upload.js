@@ -45,6 +45,7 @@ function uploadToCloudinary(file, folder) {
       {
         folder,
         resource_type: "auto",
+        access_mode: "public",
         use_filename: true,
         unique_filename: true,
       },
@@ -85,3 +86,4 @@ exports.handler = async (event) => {
     };
   }
 };
+
