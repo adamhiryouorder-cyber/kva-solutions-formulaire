@@ -337,6 +337,7 @@ function selSvc(s) {
   }
   ST.svc = getSvc();
   updateSvcVisual();
+  updateProgress();
 }
 
 function updateSvcVisual() {
@@ -405,7 +406,16 @@ function goStep(n) {
     if (el) el.style.display = (i === n - 1) ? '' : 'none';
   });
 
-  updateProgress(n);
+  // Mettre à jour les points d'étape (active / done)
+  ['d1','d2','d3','d4'].forEach(function(id, i) {
+    var dot = document.getElementById(id);
+    if (!dot) return;
+    dot.classList.remove('active', 'done');
+    if (i + 1 === n) dot.classList.add('active');
+    else if (i + 1 < n) dot.classList.add('done');
+  });
+
+  updateProgress();
 }
 
 function urbConsentHTML(svcType, withUrb) {
@@ -2224,10 +2234,31 @@ function countRequired() {
 }
 
 function updateProgress() {
+  var c, pct;
+
   var fcont = document.getElementById('fcont');
-  if (!fcont) return; // pas encore à l'étape 3
-  var c   = countRequired();
-  var pct = c.total > 0 ? Math.round((c.filled / c.total) * 100) : 0;
+  if (!fcont) {
+    // Étapes 1 et 2 : compter uniquement les champs installateur + service
+    var total = 0, filled = 0;
+
+    // Nom installateur
+    total++;
+    if ((getVal('inst-nom') || '').trim()) filled++;
+
+    // Email installateur
+    total++;
+    if ((getVal('inst-email') || '').trim()) filled++;
+
+    // Service sélectionné
+    total++;
+    if (ST.svcs.length > 0) filled++;
+
+    pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+  } else {
+    c = countRequired();
+    pct = c.total > 0 ? Math.round((c.filled / c.total) * 100) : 0;
+  }
+
   document.getElementById('pfill').style.width = pct + '%';
   document.getElementById('ppct').textContent  = pct + '%';
   var label = pct === 0   ? 'Formulaire vide'
@@ -2250,6 +2281,36 @@ function hookProgressListeners() {
     cb.addEventListener('change', updateProgress);
   });
 }
+
+// Listeners dès l'étape 1 (champs installateur + sélection service)
+// + mémorisation / restauration via localStorage
+(function() {
+  // Restaurer les valeurs sauvegardées
+  ['inst-nom', 'inst-email'].forEach(function(id) {
+    var saved = localStorage.getItem('kva_' + id);
+    var el = document.getElementById(id);
+    if (el && saved) {
+      el.value = saved;
+      el.style.borderColor = 'var(--gray-200)';
+    }
+  });
+  updateProgress();
+
+  // Sauvegarder à chaque saisie + mettre à jour la barre
+  ['inst-nom', 'inst-email'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', function() {
+        localStorage.setItem('kva_' + id, el.value.trim());
+        updateProgress();
+      });
+      el.addEventListener('change', function() {
+        localStorage.setItem('kva_' + id, el.value.trim());
+        updateProgress();
+      });
+    }
+  });
+})();
 
 // Patch prevFile pour mettre à jour la barre quand une photo est uploadée
 var _origPrevFile = prevFile;
