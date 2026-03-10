@@ -48,7 +48,7 @@ function uploadToCloudinary(file) {
       },
       (err, result) => {
         if (err) return reject(err);
-        resolve({ url: result.secure_url });
+        resolve({ url: isPdf ? result.secure_url + ".pdf" : result.secure_url });
       }
     );
     stream.end(file.buffer);
@@ -78,4 +78,5 @@ exports.handler = async (event, context) => {
     };
   }
 };
+
 
