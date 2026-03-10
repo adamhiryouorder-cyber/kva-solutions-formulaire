@@ -41,10 +41,11 @@ function parseMultipart(event) {
 
 function uploadToCloudinary(file, folder) {
   return new Promise((resolve, reject) => {
+    const isPdf = file.mimetype === "application/pdf";
     const stream = cloudinary.uploader.upload_stream(
       {
         folder,
-        resource_type: "auto",
+        resource_type: isPdf ? "raw" : "image",
         access_mode: "public",
         use_filename: true,
         unique_filename: true,
@@ -86,4 +87,5 @@ exports.handler = async (event) => {
     };
   }
 };
+
 
