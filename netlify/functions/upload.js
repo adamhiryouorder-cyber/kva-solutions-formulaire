@@ -35,7 +35,6 @@ function parseMultipart(event) {
 }
 
 function uploadToCloudinary(file) {
-  const isPdf = file.mimetype === "application/pdf";
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
@@ -77,6 +76,3 @@ exports.handler = async (event, context) => {
     };
   }
 };
-
-
-
