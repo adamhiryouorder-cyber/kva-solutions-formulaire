@@ -38,9 +38,8 @@ async function uploadToCloudinary(file) {
   const isPdf = file.mimetype === "application/pdf";
   const dataUri = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
   const result = await cloudinary.uploader.upload(dataUri, {
-    resource_type: isPdf ? "raw" : "image",
+    resource_type: "image",
     folder: "kva-form",
-    public_id: isPdf ? `kva-form/${Date.now()}.pdf` : undefined,
     access_mode: "public",
     use_filename: true,
     unique_filename: true,
@@ -70,6 +69,7 @@ exports.handler = async (event, context) => {
     };
   }
 };
+
 
 
 
