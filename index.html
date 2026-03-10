@@ -495,7 +495,7 @@ function buildForm() {
     var svc = getSvc();
     var t = svcTitles[svc] || [svc, ''];
     document.getElementById('ftitle').textContent = t[0];
-    document.getElementById('fsub').textContent   = t[1];
+    document.getElementById('fsub').textContent = t[1];
 
     var isUrb = ST.svcs.indexOf('urb') >= 0;
     var isRac = ST.svcs.indexOf('rac') >= 0;
@@ -544,45 +544,52 @@ function buildForm() {
 
     document.getElementById('fcont').innerHTML = html;
 
-    setTimeout(function(){
-      initMap();
+    setTimeout(function() {
+      try {
+        initMap();
 
-      if (ST.savedFields) {
-        Object.keys(ST.savedFields).forEach(function(id){
-          var el = document.getElementById(id);
-          if (el && ST.savedFields[id] !== undefined && ST.savedFields[id] !== '') {
-            el.value = ST.savedFields[id];
-          }
-        });
-
-        if (ST.savedProj && ST.savedProj.length) {
-          document.querySelectorAll('.proj-opt input').forEach(function(cb){
-            if (ST.savedProj.indexOf(cb.value) >= 0) cb.checked = true;
+        if (ST.savedFields) {
+          Object.keys(ST.savedFields).forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && ST.savedFields[id] !== undefined && ST.savedFields[id] !== '') {
+              el.value = ST.savedFields[id];
+            }
           });
+
+          if (ST.savedProj && ST.savedProj.length) {
+            document.querySelectorAll('.proj-opt input').forEach(function(cb) {
+              if (ST.savedProj.indexOf(cb.value) >= 0) cb.checked = true;
+            });
+          }
+
+          if (typeof restoreAllToggleStates === 'function') {
+            restoreAllToggleStates();
+          }
         }
 
-        restoreAllToggleStates();
+        var refVal = document.getElementById('inst-ref')
+          ? document.getElementById('inst-ref').value.trim().toUpperCase()
+          : '';
+
+        if (refVal && typeof loadClientProfile === 'function' && typeof applyClientProfile === 'function') {
+          var profile = loadClientProfile(refVal);
+          if (profile) applyClientProfile(profile);
+        }
+
+        if (typeof hookProgressListeners === 'function') hookProgressListeners();
+        if (typeof updateProgress === 'function') updateProgress();
+      } catch (e2) {
+        console.error('Erreur après injection du formulaire :', e2);
       }
-
-      var refVal = document.getElementById('inst-ref')
-        ? document.getElementById('inst-ref').value.trim().toUpperCase()
-        : '';
-
-      if (refVal) {
-        var profile = loadClientProfile(refVal);
-        if (profile) applyClientProfile(profile);
-      }
-
-      hookProgressListeners();
-      updateProgress();
     }, 150);
 
   } catch (e) {
-    console.error('Erreur dans buildForm():', e);
+    console.error('Erreur dans buildForm() :', e);
     document.getElementById('fcont').innerHTML =
-      '<div class="alert alert-warn">Erreur de construction du formulaire : '
-      + (e && e.message ? e.message : e)
-      + '</div>';
+      '<div class="alert alert-warn">' +
+      'Erreur de construction du formulaire : ' +
+      (e && e.message ? e.message : e) +
+      '</div>';
   }
 }
 
