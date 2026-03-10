@@ -1627,7 +1627,8 @@ if (libreItems.length > 0) {
     var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgHbZGPkyfjrmctf-Xd6GXqrKbUTs8SIVKNpJVk205dLGzjE3OrCTApPcfcDc0XaSK/exec';
     fetch(APPS_SCRIPT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
             ref:          ref,
             installateur: getVal('inst-nom'),
