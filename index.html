@@ -1583,15 +1583,25 @@ function doSaveClose() {
       att_list:        '',
     };
 
- // Injecter les URLs Cloudinary
+ // Injecter les URLs Cloudinary (PDFs via Google Docs Viewer pour affichage direct)
 photos.forEach(function(p) {
-  params[p.key] = p.url;
+  var url = p.url || '';
+  if (url.toLowerCase().endsWith('.pdf')) {
+    url = 'https://docs.google.com/viewer?url=' + encodeURIComponent(url);
+  }
+  params[p.key] = url;
 });
 
 // Construire att_list à partir des fichiers libres uploadés
 var libreItems = photos.filter(function(p){ return p.key && p.key.indexOf('att_libre_') === 0; });
 if (libreItems.length > 0) {
-  params.att_list = libreItems.map(function(p){ return (p.name || p.key) + ' : ' + p.url; }).join('\n');
+  params.att_list = libreItems.map(function(p){
+    var url = p.url || '';
+    if (url.toLowerCase().endsWith('.pdf')) {
+      url = 'https://docs.google.com/viewer?url=' + encodeURIComponent(url);
+    }
+    return (p.name || p.key) + ' : ' + url;
+  }).join('\n');
 }
 
     // ── Envoi email 1 : KVA interne (récap complet + photos)
