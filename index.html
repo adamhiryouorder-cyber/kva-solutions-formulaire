@@ -1616,11 +1616,27 @@ if (libreItems.length > 0) {
         };
         return emailjs.send(EJS.serviceId, EJS.templateInstall, paramsConf);
       })
-      .then(function() {
-        saveToStorage(ref);
-        saveClientProfile(ref);
-        showSuccess(ref, instEmail);
-      });
+    .then(function() {
+    saveToStorage(ref);
+    saveClientProfile(ref);
+    // ── Envoi Google Sheets ──────────────────────────────────────────
+    var demarches = [];
+    if (ST.svcs.indexOf('urb') >= 0) demarches.push('Urbanisme');
+    if (ST.svcs.indexOf('rac') >= 0) demarches.push('Raccordement');
+    if (ST.svcs.indexOf('con') >= 0) demarches.push('Consuel');
+    var APPS_SCRIPT_URL = 'REMPLACER_PAR_TON_URL_APPS_SCRIPT';
+    fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            ref:          ref,
+            installateur: getVal('inst-nom'),
+            demarches:    demarches.join(', ')
+        })
+    }).catch(function(e){ console.warn('Google Sheets non mis à jour :', e); });
+    // ─────────────────────────────────────────────────────────────────
+    showSuccess(ref, instEmail);
+});
 }).catch(function(err) {
   hideSending();
   console.error('Erreur envoi / upload :', err);
