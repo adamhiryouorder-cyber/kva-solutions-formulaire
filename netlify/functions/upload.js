@@ -1,5 +1,6 @@
 const cloudinary = require("cloudinary").v2;
 const Busboy = require("busboy");
+const { getStore } = require("@netlify/blobs");
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -54,31 +55,31 @@ function uploadImageToCloudinary(file, folder) {
   });
 }
 
-// PDFs → file.io (service gratuit, lien valable 14 jours, aucune dépendance)
-async function uploadPdfToFileIo(file) {
-  const formData = new FormData();
-  const blob = new Blob([file.buffer], { type: file.mimetype });
-  formData.append("file", blob, file.filename);
-  // expires=14d : le lien reste accessible 14 jours
-  formData.append("expires", "14d");
-  // autoDelete=false : le fichier n'est pas supprimé après le premier accès
-  formData.append("autoDelete", "false");
-
-  const res = await fetch("https://file.io", {
-    method: "POST",
-    body: formData,
+// PDFs → Netlify Blobs (gratuit, accès public permanent)
+async function uploadPdfToNetlifyBlobs(file, context) {
+  const store = getStore({
+    name: "kva-pdfs",
+    consistency: "strong",
+    siteID: process.env.SITE_ID,
+    token: process.env.NETLIFY_BLOBS_CONTEXT,
   });
 
-  const json = await res.json();
+  const key = `${Date.now()}_${file.filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
-  if (!json.success || !json.link) {
-    throw new Error("file.io upload échoué : " + JSON.stringify(json));
-  }
+  await store.set(key, file.buffer, {
+    metadata: {
+      filename: file.filename,
+      mimetype: file.mimetype,
+    },
+  });
 
-  return { url: json.link };
+  const siteUrl = process.env.URL || "";
+  const url = `${siteUrl}/.netlify/blobs/kva-pdfs/${encodeURIComponent(key)}`;
+
+  return { url };
 }
 
-exports.handler = async (event) => {
+exports.handler = async (event, context) => {
   try {
     if (event.httpMethod !== "POST") {
       return { statusCode: 405, body: "Method Not Allowed" };
@@ -94,7 +95,7 @@ exports.handler = async (event) => {
 
     let uploaded;
     if (isPdf) {
-      uploaded = await uploadPdfToFileIo(file);
+      uploaded = await uploadPdfToNetlifyBlobs(file, context);
     } else {
       uploaded = await uploadImageToCloudinary(file, "kva-form");
     }
