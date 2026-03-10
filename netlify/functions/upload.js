@@ -40,6 +40,7 @@ async function uploadToCloudinary(file) {
   const result = await cloudinary.uploader.upload(dataUri, {
     resource_type: isPdf ? "raw" : "image",
     folder: "kva-form",
+    public_id: isPdf ? `kva-form/${Date.now()}.pdf` : undefined,
     access_mode: "public",
     use_filename: true,
     unique_filename: true,
@@ -69,6 +70,7 @@ exports.handler = async (event, context) => {
     };
   }
 };
+
 
 
 
