@@ -11,11 +11,9 @@ function parseMultipart(event) {
   return new Promise((resolve, reject) => {
     const busboy = Busboy({ headers: event.headers });
     const files = [];
-
     busboy.on("file", (fieldname, file, info) => {
       const { filename, mimeType } = info || {};
       const chunks = [];
-
       file.on("data", (d) => chunks.push(d));
       file.on("error", reject);
       file.on("end", () => {
@@ -27,14 +25,11 @@ function parseMultipart(event) {
         });
       });
     });
-
     busboy.on("finish", () => resolve(files));
     busboy.on("error", reject);
-
     const body = event.isBase64Encoded
       ? Buffer.from(event.body, "base64")
       : Buffer.from(event.body || "", "utf8");
-
     busboy.end(body);
   });
 }
@@ -45,18 +40,27 @@ function uploadToCloudinary(file, folder) {
     const stream = cloudinary.uploader.upload_stream(
       {
         folder,
-        resource_type: isPdf ? "raw" : "image",
-        access_mode: "public",
+        // "auto" au lieu de "raw" : Cloudinary détecte le type et rend le fichier accessible publiquement
+        resource_type: "auto",
+        // "upload" garantit l'accès public sans signed URL
+        type: "upload",
         use_filename: true,
         unique_filename: true,
         ...(isPdf && { format: "pdf" }),
       },
       (err, result) => {
         if (err) return reject(err);
-        resolve({ url: result.secure_url });
+
+        let url = result.secure_url;
+
+        // fl_attachment force l'ouverture directe du PDF dans le navigateur
+        if (isPdf) {
+          url = url.replace("/upload/", "/upload/fl_attachment/");
+        }
+
+        resolve({ url });
       }
     );
-
     stream.end(file.buffer);
   });
 }
@@ -66,15 +70,11 @@ exports.handler = async (event) => {
     if (event.httpMethod !== "POST") {
       return { statusCode: 405, body: "Method Not Allowed" };
     }
-
     const files = await parseMultipart(event);
-
     if (!files.length) {
       return { statusCode: 400, body: "No file received" };
     }
-
     const uploaded = await uploadToCloudinary(files[0], "kva-form");
-
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
@@ -88,6 +88,3 @@ exports.handler = async (event) => {
     };
   }
 };
-
-
-
