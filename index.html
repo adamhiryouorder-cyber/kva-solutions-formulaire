@@ -1583,13 +1583,9 @@ function doSaveClose() {
       att_list:        '',
     };
 
- // Injecter les URLs Cloudinary (PDFs via Google Docs Viewer pour affichage direct)
+ // Injecter les URLs Cloudinary directement (lien direct, ouverture dans le navigateur)
 photos.forEach(function(p) {
-  var url = p.url || '';
-  if (url.toLowerCase().endsWith('.pdf')) {
-    url = 'https://docs.google.com/viewer?url=' + encodeURIComponent(url);
-  }
-  params[p.key] = url;
+  params[p.key] = p.url || '';
 });
 
 // Construire att_list à partir des fichiers libres uploadés
@@ -1597,10 +1593,9 @@ var libreItems = photos.filter(function(p){ return p.key && p.key.indexOf('att_l
 if (libreItems.length > 0) {
   params.att_list = libreItems.map(function(p){
     var url = p.url || '';
-    if (url.toLowerCase().endsWith('.pdf')) {
-      url = 'https://docs.google.com/viewer?url=' + encodeURIComponent(url);
-    }
-    return (p.name || p.key) + ' : ' + url;
+    var isPdf = url.toLowerCase().endsWith('.pdf');
+    var label = (p.name || p.key) + (isPdf ? ' [PDF]' : '');
+    return label + ' : ' + url;
   }).join('\n');
 }
 
