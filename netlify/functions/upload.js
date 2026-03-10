@@ -56,12 +56,10 @@ function uploadImageToCloudinary(file, folder) {
 }
 
 // PDFs → Netlify Blobs (gratuit, accès public permanent)
-async function uploadPdfToNetlifyBlobs(file, context) {
+async function uploadPdfToNetlifyBlobs(file) {
   const store = getStore({
     name: "kva-pdfs",
     consistency: "strong",
-    siteID: process.env.SITE_ID,
-    token: process.env.NETLIFY_BLOBS_CONTEXT,
   });
 
   const key = `${Date.now()}_${file.filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
@@ -95,7 +93,7 @@ exports.handler = async (event, context) => {
 
     let uploaded;
     if (isPdf) {
-      uploaded = await uploadPdfToNetlifyBlobs(file, context);
+      uploaded = await uploadPdfToNetlifyBlobs(file);
     } else {
       uploaded = await uploadImageToCloudinary(file, "kva-form");
     }
@@ -113,3 +111,4 @@ exports.handler = async (event, context) => {
     };
   }
 };
+
