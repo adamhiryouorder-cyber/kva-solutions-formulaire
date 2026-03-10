@@ -1,6 +1,5 @@
 const cloudinary = require("cloudinary").v2;
 const Busboy = require("busboy");
-const { getStore } = require("@netlify/blobs");
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -35,13 +34,13 @@ function parseMultipart(event) {
   });
 }
 
-// Images → Cloudinary
-function uploadImageToCloudinary(file, folder) {
+function uploadToCloudinary(file) {
+  const isPdf = file.mimetype === "application/pdf";
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder,
-        resource_type: "image",
+        folder: "kva-form",
+        resource_type: isPdf ? "raw" : "image",
         type: "upload",
         use_filename: true,
         unique_filename: true,
@@ -55,49 +54,16 @@ function uploadImageToCloudinary(file, folder) {
   });
 }
 
-// PDFs → Netlify Blobs (gratuit, accès public permanent)
-async function uploadPdfToNetlifyBlobs(file) {
-  const store = getStore({
-    name: "kva-pdfs",
-    consistency: "strong",
-  });
-
-  const key = `${Date.now()}_${file.filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-
-  await store.set(key, file.buffer, {
-    metadata: {
-      filename: file.filename,
-      mimetype: file.mimetype,
-    },
-  });
-
-  const siteUrl = process.env.URL || "";
-  const url = `${siteUrl}/.netlify/blobs/kva-pdfs/${encodeURIComponent(key)}`;
-
-  return { url };
-}
-
 exports.handler = async (event, context) => {
   try {
     if (event.httpMethod !== "POST") {
       return { statusCode: 405, body: "Method Not Allowed" };
     }
-
     const files = await parseMultipart(event);
     if (!files.length) {
       return { statusCode: 400, body: "No file received" };
     }
-
-    const file = files[0];
-    const isPdf = file.mimetype === "application/pdf";
-
-    let uploaded;
-    if (isPdf) {
-      uploaded = await uploadPdfToNetlifyBlobs(file);
-    } else {
-      uploaded = await uploadImageToCloudinary(file, "kva-form");
-    }
-
+    const uploaded = await uploadToCloudinary(files[0]);
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
@@ -111,4 +77,3 @@ exports.handler = async (event, context) => {
     };
   }
 };
-
