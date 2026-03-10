@@ -34,31 +34,18 @@ function parseMultipart(event) {
   });
 }
 
-function uploadToCloudinary(file) {
+async function uploadToCloudinary(file) {
   const isPdf = file.mimetype === "application/pdf";
-  const publicId = isPdf
-    ? `kva-form/${Date.now()}_${file.filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`
-    : undefined;
-
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        resource_type: isPdf ? "raw" : "image",
-        type: "upload",
-        access_mode: "public",   // ← ajoute cette ligne
-        use_filename: true,
-        unique_filename: true,
-        ...(isPdf && { public_id: publicId }),
-      },
-      (err, result) => {
-        if (err) return reject(err);
-        resolve({ url: result.secure_url });
-      }
-    );
-    stream.end(file.buffer);
+  const dataUri = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+  const result = await cloudinary.uploader.upload(dataUri, {
+    resource_type: isPdf ? "raw" : "image",
+    folder: "kva-form",
+    access_mode: "public",
+    use_filename: true,
+    unique_filename: true,
   });
+  return { url: result.secure_url };
 }
-
 exports.handler = async (event, context) => {
   try {
     if (event.httpMethod !== "POST") {
@@ -82,5 +69,6 @@ exports.handler = async (event, context) => {
     };
   }
 };
+
 
 
