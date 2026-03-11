@@ -398,6 +398,12 @@ function goStep(n) {
   }
 
   if (n === 4) {
+    var missing = validateRequired();
+    if (missing.length > 0) {
+      highlightMissing();
+      alert('❌ Champs ou pièces jointes obligatoires manquants :\n\n• ' + missing.join('\n• '));
+      return;
+    }
     buildRecap();
   }
 
@@ -554,6 +560,19 @@ function buildForm() {
 
     if (isUrb) html += sec('📷 Photos de la propriété', photoUrbHTML());
     if (isRac) html += sec('📷 Documents et photos', photoRacHTML());
+
+    if (isCon) {
+      html += '<div class="alert alert-warn" id="consuel-disclaimer" style="margin:20px 0 16px;font-size:.85rem">'
+        + '<span style="font-size:1.1rem;flex-shrink:0">⚠️</span>'
+        + '<span><strong>Attention :</strong> ce formulaire est conçu pour des installations standards. '
+        + 'Par défaut, certaines informations seront déduites automatiquement en fonction du matériel déclaré '
+        + '(par exemple, si vous indiquez des onduleurs centraux, nous considérerons que les protections AC et DC '
+        + 'sont installées en amont du tableau électrique). Si votre installation comporte des particularités ou '
+        + 'des configurations atypiques, merci de les préciser dans la rubrique <strong>« Commentaire libre »</strong> '
+        + 'lors du récapitulatif (étape&nbsp;4).</span>'
+        + '</div>';
+    }
+
     html += sec('📎 Pièces jointes complémentaires', photoLibreHTML());
 
     document.getElementById('fcont').innerHTML = html;
