@@ -1647,6 +1647,7 @@ if (libreItems.length > 0) {
     var params = new URLSearchParams({
     ref:          ref,
     installateur: getVal('inst-nom'),
+    client:       (getVal('f-nom') + ' ' + getVal('f-prenom')).trim(),
     demarches:    demarches.join(', ')
 });
 fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' })
