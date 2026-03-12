@@ -281,63 +281,6 @@ select{cursor:pointer}
     </div>
   </div>
 </div>
-
-  <div style="margin-top:16px;display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:14px">
-    <button
-      class="btn btn-p"
-      type="button"
-      onclick="buySpecificCredit('urb')"
-      style="height:88px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px"
-    >
-      <span style="font-size:20px">📋</span>
-      <span>Urbanisme</span>
-    </button>
-
-    <button
-      class="btn btn-p"
-      type="button"
-      onclick="buySpecificCredit('rac')"
-      style="height:88px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px"
-    >
-      <span style="font-size:20px">⚡</span>
-      <span>Raccordement</span>
-    </button>
-
-    <button
-      class="btn btn-p"
-      type="button"
-      onclick="buySpecificCredit('con')"
-      style="height:88px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px"
-    >
-      <span style="font-size:20px">✅</span>
-      <span>Consuel</span>
-    </button>
-  </div>
-
-  <div style="margin-top:18px;display:flex;justify-content:center">
-    <button
-      class="btn btn-p"
-      type="button"
-      onclick="buySpecificCredit('ful')"
-      style="width:min(100%,420px);height:96px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;font-size:24px"
-    >
-      <span style="font-size:24px">📦</span>
-      <span>Dossier complet</span>
-    </button>
-  </div>
-</div>
-
-    <div id="credit-box" class="alert alert-warn" style="display:none;margin-top:18px">
-      <strong>Crédit insuffisant</strong><br>
-      Vous devez acheter un crédit pour continuer.
-    </div>
-
-    <div class="row">
-      <button class="btn btn-g" onclick="goStep(1)">&#8592; Retour</button>
-      <button class="btn btn-p" onclick="continueStep()">Continuer &#8594;</button>
-    </div>
-  </div>
-</div>
   <!-- STEP 3 -->
   <div class="card" id="s3" style="display:none">
     <div class="ch">
@@ -2483,6 +2426,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0uuoTRqyevZ36
 
 const stripe = Stripe("pk_live_51T2TPa6YXq3YLz85npCpNICiFMqr2ev4RfUrW8IZam3qnRJh0yzsuGGsNa5hk4eCQQnWUTjTSQ7r0AbwCfOgDALc00qhirRXcA");
 
+
 async function callAppsScript(action, payload){
   const res = await fetch("/.netlify/functions/apps-script-proxy", {
     method: "POST",
@@ -2518,8 +2462,6 @@ async function refreshCreditStock(){
     installateur: installateur
   });
 
-  console.log("getCredits response =", res);
-
   if (!res || !res.success || !res.credits) {
     throw new Error((res && res.error) || "Impossible de lire les crédits");
   }
@@ -2547,6 +2489,89 @@ function toggleCreditStore(){
   if (!store) return;
 
   store.style.display = (store.style.display === "none" || !store.style.display) ? "block" : "none";
+}
+
+function getCreditLabel(code){
+  if (code === "urb") return "Urbanisme";
+  if (code === "rac") return "Raccordement";
+  if (code === "con") return "Consuel";
+  if (code === "ful") return "Dossier complet";
+  return code;
+}
+
+function addCreditToCart(code){
+  const existing = creditCart.find(item => item.code === code);
+
+  if (existing) {
+    existing.quantity += 1;
+  } else {
+    creditCart.push({ code: code, quantity: 1 });
+  }
+
+  renderCreditCart();
+}
+
+function changeCartQty(code, delta){
+  const item = creditCart.find(x => x.code === code);
+  if (!item) return;
+
+  item.quantity += delta;
+
+  if (item.quantity <= 0) {
+    creditCart = creditCart.filter(x => x.code !== code);
+  }
+
+  renderCreditCart();
+}
+
+function renderCreditCart(){
+  const wrap = document.getElementById("credit-cart");
+  const lines = document.getElementById("credit-cart-lines");
+
+  if (!wrap || !lines) return;
+
+  if (!creditCart.length) {
+    wrap.style.display = "none";
+    lines.innerHTML = "";
+    return;
+  }
+
+  wrap.style.display = "block";
+
+  lines.innerHTML = creditCart.map(item => `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border:1px solid #d9e4f2;border-radius:14px;background:#fff">
+      <div><strong>${getCreditLabel(item.code)}</strong></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button type="button" class="btn btn-g" onclick="changeCartQty('${item.code}', -1)">−</button>
+        <span>${item.quantity}</span>
+        <button type="button" class="btn btn-p" onclick="changeCartQty('${item.code}', 1)">+</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function checkoutCreditCart(){
+  const installateur = (document.getElementById("inst-nom").value || "").trim();
+
+  if (!installateur || !creditCart.length) {
+    return;
+  }
+
+  const res = await fetch("/.netlify/functions/create-checkout-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      installateur: installateur,
+      items: creditCart
+    })
+  });
+
+  if (!res.ok) {
+    throw new Error("Erreur Stripe");
+  }
+
+  const data = await res.json();
+  await stripe.redirectToCheckout({ sessionId: data.id });
 }
 
 async function checkCredits(){
@@ -2584,46 +2609,6 @@ async function continueStep(){
     console.error(e);
     if (box) box.style.display = "block";
   }
-}
-
-function getProductIdFromCode(code){
-  if (code === "urb") return "prod_U7gIGmVomEZGc9";
-  if (code === "rac") return "prod_U7LytKQi8G3deM";
-  if (code === "con") return "prod_U7g0igbQ0OeQse";
-  if (code === "ful") return "prod_U0cEtMlFkfZpEj";
-  return "";
-}
-
-async function buySpecificCredit(code){
-  const productId = getProductIdFromCode(code);
-
-  if (!productId) {
-    throw new Error("Produit Stripe introuvable");
-  }
-
-  const res = await fetch("/.netlify/functions/create-checkout-session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      productId: productId,
-      installateur: (document.getElementById("inst-nom").value || "").trim()
-    })
-  });
-
-  if (!res.ok) {
-    throw new Error("Erreur Stripe");
-  }
-
-  const data = await res.json();
-  await stripe.redirectToCheckout({ sessionId: data.id });
-}
-
-async function buyCredit(){
-  const dem = ST.svcs[0];
-
-  if (!dem) return;
-
-  await buySpecificCredit(dem);
 }
 
 </script>
