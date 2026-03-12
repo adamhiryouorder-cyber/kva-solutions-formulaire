@@ -2424,7 +2424,9 @@ async function continueStep(){
 
   catch(e){
 
-    console.log(e);
+    console.error(e);
+    document.getElementById("credit-box").style.display = "block";
+    alert("Blocage étape 3 : " + (e.message || e));
 
   }
 
