@@ -196,54 +196,78 @@ select{cursor:pointer}
     </div>
   </div>
 
-  <!-- STEP 2 -->
-  <div class="card" id="s2" style="display:none">
-    <div class="ch">
-      <div class="badge">Étape 2 / 4</div>
-      <h2>Choix du service</h2>
-      <p>Sélectionnez au moins un service — sélection multiple possible</p>
+<!-- STEP 2 -->
+<div class="card" id="s2" style="display:none">
+  <div class="ch">
+    <div class="badge">Étape 2 / 4</div>
+    <h2>Choix du service</h2>
+    <p>Sélectionnez au moins un service — sélection multiple possible</p>
+  </div>
+  <div class="cb">
+    <div class="alert" style="margin-bottom:16px">
+      &#128161;
+      <span>
+        Vous pouvez sélectionner <strong>plusieurs démarches</strong> en cliquant sur chaque carte.
+        <em>Dossier Complet</em> sélectionne les 3 en un clic.
+      </span>
     </div>
-    <div class="cb">
-      <div class="alert" style="margin-bottom:16px">&#128161; <span>Vous pouvez sélectionner <strong>plusieurs démarches</strong> en cliquant sur chaque carte. <em>Dossier Complet</em> sélectionne les 3 en un clic.</span></div>
-      <div class="svc-grid">
-        <div class="sc" id="sv-u" onclick="selSvc('urb')">
-          <div class="si">&#128203;</div>
-          <div class="sn">Urbanisme</div>
-          <div class="sd">Déclaration préalable de travaux</div>
-        </div>
-        <div class="sc" id="sv-r" onclick="selSvc('rac')">
-          <div class="si">&#9889;</div>
-          <div class="sn">Raccordement</div>
-          <div class="sd">Demande de raccordement ENEDIS</div>
-        </div>
-        <div class="sc" id="sv-c" onclick="selSvc('con')">
-          <div class="si">&#9989;</div>
-          <div class="sn">Consuel</div>
-          <div class="sd">Attestation de conformité</div>
-        </div>
-        <div class="sc" id="sv-f" onclick="selSvc('ful')">
-          <div class="si">&#128230;</div>
-          <div class="sn">Dossier Complet</div>
-          <div class="sd">Urbanisme + Raccordement + Consuel</div>
+
+    <div class="svc-grid">
+      <div class="sc" id="sv-u" onclick="selSvc('urb')">
+        <div class="si">&#128203;</div>
+        <div class="sn">Urbanisme</div>
+        <div class="sd">Déclaration préalable de travaux</div>
+      </div>
+
+      <div class="sc" id="sv-r" onclick="selSvc('rac')">
+        <div class="si">&#9889;</div>
+        <div class="sn">Raccordement</div>
+        <div class="sd">Demande de raccordement ENEDIS</div>
+      </div>
+
+      <div class="sc" id="sv-c" onclick="selSvc('con')">
+        <div class="si">&#9989;</div>
+        <div class="sn">Consuel</div>
+        <div class="sd">Attestation de conformité</div>
+      </div>
+
+      <div class="sc" id="sv-f" onclick="selSvc('ful')">
+        <div class="si">&#128230;</div>
+        <div class="sn">Dossier Complet</div>
+        <div class="sd">Urbanisme + Raccordement + Consuel</div>
+      </div>
+    </div>
+
+    <div id="credit-stock" class="alert" style="margin-top:18px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
+      <div>
+        <strong>Mon stock de crédits</strong>
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+          <span class="badge" id="stock-urb" style="background:#eef6ff;color:#0b4ea2;border:none">Urbanisme : 0</span>
+          <span class="badge" id="stock-rac" style="background:#eef6ff;color:#0b4ea2;border:none">Raccordement : 0</span>
+          <span class="badge" id="stock-con" style="background:#eef6ff;color:#0b4ea2;border:none">Consuel : 0</span>
         </div>
       </div>
 
-<div id="credit-box" class="alert alert-warn" style="display:none;margin-top:18px">
-  <strong>Crédit insuffisant</strong><br>
-  Vous devez acheter un crédit pour continuer.
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-p" type="button" onclick="openCreditStore()">Acheter des crédits</button>
+      </div>
+    </div>
 
-  <div style="margin-top:12px">
-    <button class="btn btn-p" onclick="buyCredit()">Acheter un crédit</button>
-  </div>
-</div>
+    <div id="credit-box" class="alert alert-warn" style="display:none;margin-top:18px">
+      <strong>Crédit insuffisant</strong><br>
+      Vous devez acheter un crédit pour continuer.
 
-<div class="row">
-  <button class="btn btn-g" onclick="goStep(1)">&#8592; Retour</button>
-  <button class="btn btn-p" onclick="continueStep()">Continuer &#8594;</button>
-</div>
+      <div style="margin-top:12px">
+        <button class="btn btn-p" type="button" onclick="buyCredit()">Acheter un crédit</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="btn btn-g" onclick="goStep(1)">&#8592; Retour</button>
+      <button class="btn btn-p" onclick="continueStep()">Continuer &#8594;</button>
     </div>
   </div>
-
+</div>
   <!-- STEP 3 -->
   <div class="card" id="s3" style="display:none">
     <div class="ch">
@@ -2377,7 +2401,6 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0uuoTRqyevZ36
 const stripe = Stripe("pk_live_51T2TPa6YXq3YLz85npCpNICiFMqr2ev4RfUrW8IZam3qnRJh0yzsuGGsNa5hk4eCQQnWUTjTSQ7r0AbwCfOgDALc00qhirRXcA");
 
 async function callAppsScript(action, payload){
-
   const res = await fetch("/.netlify/functions/apps-script-proxy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -2394,25 +2417,96 @@ async function callAppsScript(action, payload){
   return await res.json();
 }
 
-async function checkCredits(){
+async function refreshCreditStock(){
+  const installateur = (document.getElementById("inst-nom").value || "").trim();
 
-  const installateur = document.getElementById("inst-nom").value;
-
-  const demarches = ST.svcs;
-
-  const res = await callAppsScript("checkCredits",{
-    installateur:installateur,
-    demarches:demarches
-  });
-
-  if(!res.enough){
-
-    document.getElementById("credit-box").style.display="block";
-
-    throw new Error("Crédit insuffisant");
-
+  if (!installateur) {
+    document.getElementById("stock-urb").textContent = "Urbanisme : 0";
+    document.getElementById("stock-rac").textContent = "Raccordement : 0";
+    document.getElementById("stock-con").textContent = "Consuel : 0";
+    return;
   }
 
+  const res = await callAppsScript("getCredits", {
+    installateur: installateur
+  });
+
+  if (!res || !res.success || !res.credits) {
+    throw new Error((res && res.error) || "Impossible de lire les crédits");
+  }
+
+  const c = res.credits;
+  document.getElementById("stock-urb").textContent = "Urbanisme : " + (c.urbanisme || 0);
+  document.getElementById("stock-rac").textContent = "Raccordement : " + (c.raccordement || 0);
+  document.getElementById("stock-con").textContent = "Consuel : " + (c.consuel || 0);
+}
+
+async function checkCredits(){
+  const installateur = (document.getElementById("inst-nom").value || "").trim();
+  const demarches = ST.svcs || [];
+
+  const res = await callAppsScript("checkCredits", {
+    installateur: installateur,
+    demarches: demarches
+  });
+
+  if (!res || !res.success) {
+    throw new Error((res && res.error) || "Erreur de vérification des crédits");
+  }
+
+  if (!res.enough) {
+    throw new Error("Crédit insuffisant");
+  }
+
+  return res;
+}
+
+async function continueStep(){
+  document.getElementById("credit-box").style.display = "none";
+
+  try {
+    await refreshCreditStock();
+    await checkCredits();
+    goStep(3);
+  } catch (e) {
+    console.error(e);
+    document.getElementById("credit-box").style.display = "block";
+  }
+}
+
+async function buyCredit(){
+  const dem = ST.svcs[0];
+  let productId = "";
+
+  if (dem === "urb") productId = "prod_U7gIGmVomEZGc9";
+  if (dem === "rac") productId = "prod_U7LytKQi8G3deM";
+  if (dem === "con") productId = "prod_U7g0igbQ0OeQse";
+  if (dem === "ful") productId = "prod_U0cEtMlFkfZpEj";
+
+  if (!productId) {
+    document.getElementById("credit-box").style.display = "block";
+    return;
+  }
+
+  const res = await fetch("/.netlify/functions/create-checkout-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      productId: productId,
+      installateur: document.getElementById("inst-nom").value
+    })
+  });
+
+  if (!res.ok) {
+    throw new Error("Erreur Stripe");
+  }
+
+  const data = await res.json();
+  await stripe.redirectToCheckout({ sessionId: data.id });
+}
+
+function openCreditStore(){
+  document.getElementById("credit-box").style.display = "block";
 }
 
 async function continueStep(){
