@@ -233,14 +233,14 @@ select{cursor:pointer}
   Vous devez acheter un crédit pour continuer.
 
   <div style="margin-top:12px">
-    <button class="btn btn-p" onclick="continueStep()">Continuer &#8594;</button>
+    <button class="btn btn-p" onclick="buyCredit()">Acheter un crédit</button>
   </div>
 </div>
 
 <div class="row">
-        <button class="btn btn-g" onclick="goStep(1)">&#8592; Retour</button>
-        <button class="btn btn-p" onclick="goStep(3)">Continuer &#8594;</button>
-      </div>
+  <button class="btn btn-g" onclick="goStep(1)">&#8592; Retour</button>
+  <button class="btn btn-p" onclick="continueStep()">Continuer &#8594;</button>
+</div>
     </div>
   </div>
 
@@ -2372,7 +2372,7 @@ prevFile = function(iid, aid, pid) {
 
 // ===== SYSTEME CREDITS =====
 
-const APPS_SCRIPT_URL = "COLLER_ICI_URL_WEBAPP_APPS_SCRIPT";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0uuoTRqyevZ36J1ixU2FqYocQq4wx3QzNbdWeO-Vf23piiUxOw3BN0zm6cLIOEYft/exec";
 
 const stripe = Stripe("pk_live_51T2TPa6YXq3YLz85npCpNICiFMqr2ev4RfUrW8IZam3qnRJh0yzsuGGsNa5hk4eCQQnWUTjTSQ7r0AbwCfOgDALc00qhirRXcA");
 
