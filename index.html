@@ -254,15 +254,56 @@ select{cursor:pointer}
       </div>
     </div>
 
-    <div id="credit-store" class="alert" style="display:none;margin-top:18px">
-      <strong>Boutique crédits</strong>
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-p" type="button" onclick="buySpecificCredit('urb')">Acheter Urbanisme</button>
-        <button class="btn btn-p" type="button" onclick="buySpecificCredit('rac')">Acheter Raccordement</button>
-        <button class="btn btn-p" type="button" onclick="buySpecificCredit('con')">Acheter Consuel</button>
-        <button class="btn btn-p" type="button" onclick="buySpecificCredit('ful')">Acheter Dossier complet</button>
-      </div>
-    </div>
+   <div id="credit-store" class="alert" style="display:none;margin-top:18px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <strong style="font-size:20px">Boutique crédits</strong>
+    <span style="opacity:.75">Choisissez le pack à ajouter</span>
+  </div>
+
+  <div style="margin-top:16px;display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:14px">
+    <button
+      class="btn btn-p"
+      type="button"
+      onclick="buySpecificCredit('urb')"
+      style="height:88px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px"
+    >
+      <span style="font-size:20px">📋</span>
+      <span>Urbanisme</span>
+    </button>
+
+    <button
+      class="btn btn-p"
+      type="button"
+      onclick="buySpecificCredit('rac')"
+      style="height:88px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px"
+    >
+      <span style="font-size:20px">⚡</span>
+      <span>Raccordement</span>
+    </button>
+
+    <button
+      class="btn btn-p"
+      type="button"
+      onclick="buySpecificCredit('con')"
+      style="height:88px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px"
+    >
+      <span style="font-size:20px">✅</span>
+      <span>Consuel</span>
+    </button>
+  </div>
+
+  <div style="margin-top:18px;display:flex;justify-content:center">
+    <button
+      class="btn btn-p"
+      type="button"
+      onclick="buySpecificCredit('ful')"
+      style="width:min(100%,420px);height:96px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;font-size:24px"
+    >
+      <span style="font-size:24px">📦</span>
+      <span>Dossier complet</span>
+    </button>
+  </div>
+</div>
 
     <div id="credit-box" class="alert alert-warn" style="display:none;margin-top:18px">
       <strong>Crédit insuffisant</strong><br>
