@@ -118,6 +118,12 @@ select{cursor:pointer}
   .btn{width:100%;justify-content:center}
   .cb{padding:20px}
 }
+  
+@media(max-width:640px){
+  #credit-store > div:nth-child(2){
+    grid-template-columns:1fr !important;
+  }
+}
 </style>
 <!-- EmailJS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -254,33 +260,56 @@ select{cursor:pointer}
       </div>
     </div>
 
-    <div id="credit-store" class="alert" style="display:none;margin-top:18px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-        <strong style="font-size:20px">Boutique crédits</strong>
-        <span style="opacity:.75">Choisissez les crédits à ajouter au panier</span>
-      </div>
-
-      <div style="margin-top:16px;display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:14px">
-        <button class="btn btn-p" type="button" onclick="addCreditToCart('urb')">Urbanisme</button>
-        <button class="btn btn-p" type="button" onclick="addCreditToCart('rac')">Raccordement</button>
-        <button class="btn btn-p" type="button" onclick="addCreditToCart('con')">Consuel</button>
-      </div>
-
-      <div style="margin-top:18px;display:flex;justify-content:center">
-        <button class="btn btn-p" type="button" onclick="addCreditToCart('ful')" style="width:min(100%,420px);height:88px;font-size:22px">
-          Dossier complet
-        </button>
-      </div>
-
-      <div id="credit-cart" style="display:none;margin-top:18px">
-        <strong>Panier</strong>
-        <div id="credit-cart-lines" style="margin-top:10px;display:flex;flex-direction:column;gap:10px"></div>
-
-        <div style="margin-top:16px;display:flex;justify-content:flex-end">
-          <button class="btn btn-p" type="button" onclick="checkoutCreditCart()">Payer le panier</button>
-        </div>
-      </div>
+<div id="credit-store" class="alert" style="display:none;margin-top:18px;padding:20px 20px 18px 20px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
+    <div>
+      <strong style="font-size:22px;display:block">Boutique crédits</strong>
+      <span style="opacity:.75;font-size:.92rem">Ajoutez les crédits souhaités au panier</span>
     </div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid #d6e4ff;border-radius:999px;background:#fff">
+      <span style="font-size:16px">🔒</span>
+      <span style="font-size:.88rem;font-weight:600">Paiement sécurisé via Stripe</span>
+    </div>
+  </div>
+
+  <div style="margin-top:18px;display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:14px">
+    <button class="btn btn-p" type="button" onclick="addCreditToCart('urb')" style="height:92px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px">
+      <span style="font-size:22px">📋</span>
+      <span>Urbanisme</span>
+    </button>
+
+    <button class="btn btn-p" type="button" onclick="addCreditToCart('rac')" style="height:92px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px">
+      <span style="font-size:22px">⚡</span>
+      <span>Raccordement</span>
+    </button>
+
+    <button class="btn btn-p" type="button" onclick="addCreditToCart('con')" style="height:92px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px">
+      <span style="font-size:22px">✅</span>
+      <span>Consuel</span>
+    </button>
+  </div>
+
+  <div style="margin-top:18px;display:flex;justify-content:center">
+    <button class="btn btn-p" type="button" onclick="addCreditToCart('ful')" style="width:min(100%,460px);height:108px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;font-size:24px">
+      <span style="font-size:26px">📦</span>
+      <span>Dossier complet</span>
+    </button>
+  </div>
+
+  <div id="credit-cart" style="display:none;margin-top:20px;padding-top:18px;border-top:1px solid #d6e4ff">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <strong style="font-size:18px">Panier</strong>
+      <span style="opacity:.7;font-size:.88rem">Modifiez les quantités avant paiement</span>
+    </div>
+
+    <div id="credit-cart-lines" style="margin-top:12px;display:flex;flex-direction:column;gap:10px"></div>
+
+    <div style="margin-top:16px;display:flex;justify-content:flex-end">
+      <button class="btn btn-p" type="button" onclick="checkoutCreditCart()">Payer le panier</button>
+    </div>
+  </div>
+</div>
 
     <div id="credit-box" class="alert alert-warn" style="display:none;margin-top:18px">
       <strong>Crédit insuffisant</strong><br>
