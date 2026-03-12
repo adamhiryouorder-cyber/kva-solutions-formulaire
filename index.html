@@ -203,6 +203,7 @@ select{cursor:pointer}
     <h2>Choix du service</h2>
     <p>Sélectionnez au moins un service — sélection multiple possible</p>
   </div>
+
   <div class="cb">
     <div class="alert" style="margin-bottom:16px">
       &#128161;
@@ -248,18 +249,24 @@ select{cursor:pointer}
         </div>
       </div>
 
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-p" type="button" onclick="openCreditStore()">Acheter des crédits</button>
+      <div>
+        <button class="btn btn-p" type="button" onclick="toggleCreditStore()">Acheter des crédits</button>
+      </div>
+    </div>
+
+    <div id="credit-store" class="alert" style="display:none;margin-top:18px">
+      <strong>Boutique crédits</strong>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-p" type="button" onclick="buySpecificCredit('urb')">Acheter Urbanisme</button>
+        <button class="btn btn-p" type="button" onclick="buySpecificCredit('rac')">Acheter Raccordement</button>
+        <button class="btn btn-p" type="button" onclick="buySpecificCredit('con')">Acheter Consuel</button>
+        <button class="btn btn-p" type="button" onclick="buySpecificCredit('ful')">Acheter Dossier complet</button>
       </div>
     </div>
 
     <div id="credit-box" class="alert alert-warn" style="display:none;margin-top:18px">
       <strong>Crédit insuffisant</strong><br>
       Vous devez acheter un crédit pour continuer.
-
-      <div style="margin-top:12px">
-        <button class="btn btn-p" type="button" onclick="buyCredit()">Acheter un crédit</button>
-      </div>
     </div>
 
     <div class="row">
@@ -457,14 +464,18 @@ function goStep(n) {
 
   updateProgress();
 
-  if (n === 2) {
-    var creditBox = document.getElementById('credit-box');
-    if (creditBox) creditBox.style.display = 'none';
+if (n === 2) {
 
-    refreshCreditStock().catch(function(err) {
-      console.error('refreshCreditStock error:', err);
-    });
-  }
+  var creditBox = document.getElementById('credit-box');
+  if (creditBox) creditBox.style.display = 'none';
+
+  var creditStore = document.getElementById('credit-store');
+  if (creditStore) creditStore.style.display = 'none';
+
+  refreshCreditStock().catch(function(err) {
+    console.error('refreshCreditStock error:', err);
+  });
+
 }
 
 function urbConsentHTML(svcType, withUrb) {
@@ -2426,10 +2437,18 @@ async function callAppsScript(action, payload){
 }
 
 async function refreshCreditStock(){
-
   const installateur = (document.getElementById("inst-nom").value || "").trim();
 
-  if (!installateur) return;
+  const urbEl = document.getElementById("stock-urb");
+  const racEl = document.getElementById("stock-rac");
+  const conEl = document.getElementById("stock-con");
+
+  if (!installateur) {
+    if (urbEl) urbEl.innerText = "Urbanisme : 0";
+    if (racEl) racEl.innerText = "Raccordement : 0";
+    if (conEl) conEl.innerText = "Consuel : 0";
+    return;
+  }
 
   const res = await callAppsScript("getCredits", {
     installateur: installateur
@@ -2437,22 +2456,33 @@ async function refreshCreditStock(){
 
   console.log("getCredits response =", res);
 
-  if (!res || !res.success) return;
+  if (!res || !res.success || !res.credits) {
+    throw new Error((res && res.error) || "Impossible de lire les crédits");
+  }
 
-  const credits = res.credits || {};
+  const c = res.credits || {};
 
-  const urb = credits.urbanisme ?? 0;
-  const rac = credits.raccordement ?? 0;
-  const con = credits.consuel ?? 0;
+  if (urbEl) urbEl.innerText = "Urbanisme : " + Number(c.urbanisme || 0);
+  if (racEl) racEl.innerText = "Raccordement : " + Number(c.raccordement || 0);
+  if (conEl) conEl.innerText = "Consuel : " + Number(c.consuel || 0);
+}
 
-  const urbEl = document.getElementById("stock-urb");
-  const racEl = document.getElementById("stock-rac");
-  const conEl = document.getElementById("stock-con");
+function hideCreditMessages(){
+  const box = document.getElementById("credit-box");
+  const store = document.getElementById("credit-store");
 
-  if (urbEl) urbEl.innerText = "Urbanisme : " + urb;
-  if (racEl) racEl.innerText = "Raccordement : " + rac;
-  if (conEl) conEl.innerText = "Consuel : " + con;
+  if (box) box.style.display = "none";
+  if (store) store.style.display = "none";
+}
 
+function toggleCreditStore(){
+  const store = document.getElementById("credit-store");
+  const box = document.getElementById("credit-box");
+
+  if (box) box.style.display = "none";
+  if (!store) return;
+
+  store.style.display = (store.style.display === "none" || !store.style.display) ? "block" : "none";
 }
 
 async function checkCredits(){
@@ -2476,7 +2506,11 @@ async function checkCredits(){
 }
 
 async function continueStep(){
-  document.getElementById("credit-box").style.display = "none";
+  const box = document.getElementById("credit-box");
+  const store = document.getElementById("credit-store");
+
+  if (box) box.style.display = "none";
+  if (store) store.style.display = "none";
 
   try {
     await refreshCreditStock();
@@ -2484,22 +2518,23 @@ async function continueStep(){
     goStep(3);
   } catch (e) {
     console.error(e);
-    document.getElementById("credit-box").style.display = "block";
+    if (box) box.style.display = "block";
   }
 }
 
-async function buyCredit(){
-  const dem = ST.svcs[0];
-  let productId = "";
+function getProductIdFromCode(code){
+  if (code === "urb") return "prod_U7gIGmVomEZGc9";
+  if (code === "rac") return "prod_U7LytKQi8G3deM";
+  if (code === "con") return "prod_U7g0igbQ0OeQse";
+  if (code === "ful") return "prod_U0cEtMlFkfZpEj";
+  return "";
+}
 
-  if (dem === "urb") productId = "prod_U7gIGmVomEZGc9";
-  if (dem === "rac") productId = "prod_U7LytKQi8G3deM";
-  if (dem === "con") productId = "prod_U7g0igbQ0OeQse";
-  if (dem === "ful") productId = "prod_U0cEtMlFkfZpEj";
+async function buySpecificCredit(code){
+  const productId = getProductIdFromCode(code);
 
   if (!productId) {
-    document.getElementById("credit-box").style.display = "block";
-    return;
+    throw new Error("Produit Stripe introuvable");
   }
 
   const res = await fetch("/.netlify/functions/create-checkout-session", {
@@ -2507,51 +2542,7 @@ async function buyCredit(){
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       productId: productId,
-      installateur: document.getElementById("inst-nom").value
-    })
-  });
-
-  if (!res.ok) {
-    throw new Error("Erreur Stripe");
-  }
-
-  const data = await res.json();
-  await stripe.redirectToCheckout({ sessionId: data.id });
-}  
-
-async function continueStep(){
-  document.getElementById("credit-box").style.display = "none";
-
-  try {
-    await refreshCreditStock();
-    await checkCredits();
-    goStep(3);
-  } catch (e) {
-    console.error(e);
-    document.getElementById("credit-box").style.display = "block";
-  }
-}
-
-async function buyCredit(){
-  const dem = ST.svcs[0];
-  let productId = "";
-
-  if (dem === "urb") productId = "prod_U7gIGmVomEZGc9";
-  if (dem === "rac") productId = "prod_U7LytKQi8G3deM";
-  if (dem === "con") productId = "prod_U7g0igbQ0OeQse";
-  if (dem === "ful") productId = "prod_U0cEtMlFkfZpEj";
-
-  if (!productId) {
-    document.getElementById("credit-box").style.display = "block";
-    return;
-  }
-
-  const res = await fetch("/.netlify/functions/create-checkout-session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      productId: productId,
-      installateur: document.getElementById("inst-nom").value
+      installateur: (document.getElementById("inst-nom").value || "").trim()
     })
   });
 
@@ -2563,53 +2554,12 @@ async function buyCredit(){
   await stripe.redirectToCheckout({ sessionId: data.id });
 }
 
-function openCreditStore(){
-  document.getElementById("credit-box").style.display = "block";
-}
-
-async function continueStep(){
-
-  try{
-
-    await checkCredits();
-
-    goStep(3);
-
-  }
-
-  catch(e){
-
-    console.error(e);
-    document.getElementById("credit-box").style.display = "block";
-
-  }
-
-}
-
 async function buyCredit(){
-
   const dem = ST.svcs[0];
 
-  let productId="";
+  if (!dem) return;
 
-  if(dem==="urb") productId="prod_U7gIGmVomEZGc9";
-  if(dem==="rac") productId="prod_U7LytKQi8G3deM";
-  if(dem==="con") productId="prod_U7g0igbQ0OeQse";
-  if(dem==="ful") productId="prod_U0cEtMlFkfZpEj";
-
-  const res = await fetch("/.netlify/functions/create-checkout-session",{
-    method:"POST",
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      productId:productId,
-      installateur:document.getElementById("inst-nom").value
-    })
-  });
-
-  const data = await res.json();
-
-  stripe.redirectToCheckout({sessionId:data.id});
-
+  await buySpecificCredit(dem);
 }
 
 </script>
