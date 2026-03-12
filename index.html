@@ -447,7 +447,6 @@ function goStep(n) {
     if (el) el.style.display = (i === n - 1) ? '' : 'none';
   });
 
-  // Mettre à jour les points d'étape (active / done)
   ['d1','d2','d3','d4'].forEach(function(id, i) {
     var dot = document.getElementById(id);
     if (!dot) return;
@@ -457,6 +456,15 @@ function goStep(n) {
   });
 
   updateProgress();
+
+  if (n === 2) {
+    var creditBox = document.getElementById('credit-box');
+    if (creditBox) creditBox.style.display = 'none';
+
+    refreshCreditStock().catch(function(err) {
+      console.error('refreshCreditStock error:', err);
+    });
+  }
 }
 
 function urbConsentHTML(svcType, withUrb) {
@@ -2431,14 +2439,17 @@ async function refreshCreditStock(){
     installateur: installateur
   });
 
+  console.log("getCredits response =", res);
+
   if (!res || !res.success || !res.credits) {
     throw new Error((res && res.error) || "Impossible de lire les crédits");
   }
 
   const c = res.credits;
-  document.getElementById("stock-urb").textContent = "Urbanisme : " + (c.urbanisme || 0);
-  document.getElementById("stock-rac").textContent = "Raccordement : " + (c.raccordement || 0);
-  document.getElementById("stock-con").textContent = "Consuel : " + (c.consuel || 0);
+
+  document.getElementById("stock-urb").textContent = "Urbanisme : " + Number(c.urbanisme || 0);
+  document.getElementById("stock-rac").textContent = "Raccordement : " + Number(c.raccordement || 0);
+  document.getElementById("stock-con").textContent = "Consuel : " + Number(c.consuel || 0);
 }
 
 async function checkCredits(){
@@ -2503,6 +2514,50 @@ async function buyCredit(){
 
   const data = await res.json();
   await stripe.redirectToCheckout({ sessionId: data.id });
+}  
+
+async function continueStep(){
+  document.getElementById("credit-box").style.display = "none";
+
+  try {
+    await refreshCreditStock();
+    await checkCredits();
+    goStep(3);
+  } catch (e) {
+    console.error(e);
+    document.getElementById("credit-box").style.display = "block";
+  }
+}
+
+async function buyCredit(){
+  const dem = ST.svcs[0];
+  let productId = "";
+
+  if (dem === "urb") productId = "prod_U7gIGmVomEZGc9";
+  if (dem === "rac") productId = "prod_U7LytKQi8G3deM";
+  if (dem === "con") productId = "prod_U7g0igbQ0OeQse";
+  if (dem === "ful") productId = "prod_U0cEtMlFkfZpEj";
+
+  if (!productId) {
+    document.getElementById("credit-box").style.display = "block";
+    return;
+  }
+
+  const res = await fetch("/.netlify/functions/create-checkout-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      productId: productId,
+      installateur: document.getElementById("inst-nom").value
+    })
+  });
+
+  if (!res.ok) {
+    throw new Error("Erreur Stripe");
+  }
+
+  const data = await res.json();
+  await stripe.redirectToCheckout({ sessionId: data.id });
 }
 
 function openCreditStore(){
@@ -2523,7 +2578,6 @@ async function continueStep(){
 
     console.error(e);
     document.getElementById("credit-box").style.display = "block";
-    alert("Blocage étape 3 : " + (e.message || e));
 
   }
 
