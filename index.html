@@ -2426,14 +2426,10 @@ async function callAppsScript(action, payload){
 }
 
 async function refreshCreditStock(){
+
   const installateur = (document.getElementById("inst-nom").value || "").trim();
 
-  if (!installateur) {
-    document.getElementById("stock-urb").textContent = "Urbanisme : 0";
-    document.getElementById("stock-rac").textContent = "Raccordement : 0";
-    document.getElementById("stock-con").textContent = "Consuel : 0";
-    return;
-  }
+  if (!installateur) return;
 
   const res = await callAppsScript("getCredits", {
     installateur: installateur
@@ -2441,15 +2437,22 @@ async function refreshCreditStock(){
 
   console.log("getCredits response =", res);
 
-  if (!res || !res.success || !res.credits) {
-    throw new Error((res && res.error) || "Impossible de lire les crédits");
-  }
+  if (!res || !res.success) return;
 
-  const c = res.credits;
+  const credits = res.credits || {};
 
-  document.getElementById("stock-urb").textContent = "Urbanisme : " + Number(c.urbanisme || 0);
-  document.getElementById("stock-rac").textContent = "Raccordement : " + Number(c.raccordement || 0);
-  document.getElementById("stock-con").textContent = "Consuel : " + Number(c.consuel || 0);
+  const urb = credits.urbanisme ?? 0;
+  const rac = credits.raccordement ?? 0;
+  const con = credits.consuel ?? 0;
+
+  const urbEl = document.getElementById("stock-urb");
+  const racEl = document.getElementById("stock-rac");
+  const conEl = document.getElementById("stock-con");
+
+  if (urbEl) urbEl.innerText = "Urbanisme : " + urb;
+  if (racEl) racEl.innerText = "Raccordement : " + rac;
+  if (conEl) conEl.innerText = "Consuel : " + con;
+
 }
 
 async function checkCredits(){
