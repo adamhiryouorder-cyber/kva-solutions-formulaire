@@ -1603,7 +1603,14 @@ function showSuccess(ref, instEmail) {
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function doSaveClose() {
+async function doSaveClose() {
+    try {
+    await consumeCreditsForCurrentRequest();
+  } catch (e) {
+    console.error("Erreur consommation crédits", e);
+    alert("Impossible de consommer les crédits pour ce dossier.");
+    return;
+  }
   var instNom   = getVal('inst-nom');
   var instEmail = getVal('inst-email');
   var ref       = getVal('inst-ref') || mkRef();
@@ -2636,7 +2643,21 @@ async function checkCredits(){
 
   return res;
 }
+async function consumeCreditsForCurrentRequest(){
+  const installateur = (document.getElementById("inst-nom").value || "").trim();
+  const demarches = ST.svcs || [];
 
+  const res = await callAppsScript("consumeCredits", {
+    installateur: installateur,
+    demarches: demarches
+  });
+
+  if (!res || !res.success) {
+    throw new Error((res && res.error) || "Erreur de consommation des crédits");
+  }
+
+  return res;
+}
 async function continueStep(){
   const box = document.getElementById("credit-box");
   const store = document.getElementById("credit-store");
