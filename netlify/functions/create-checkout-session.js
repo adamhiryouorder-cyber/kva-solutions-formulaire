@@ -2,23 +2,11 @@ const Stripe = require("stripe");
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const PRODUCTS = {
-  "prod_U7gIGmVomEZGc9": {
-    name: "Urbanisme",
-    amount: 10000
-  },
-  "prod_U7LytKQi8G3deM": {
-    name: "Raccordement",
-    amount: 10000
-  },
-  "prod_U7g0igbQ0OeQse": {
-    name: "Consuel",
-    amount: 7000
-  },
-  "prod_U0cEtMlFkfZpEj": {
-    name: "Dossier complet",
-    amount: 25000
-  }
+const PRICE_MAP = {
+  urb: "price_1T9Qvz6YXq3YLz85GnRCLMGD",
+  con: "price_1T9QeO6YXq3YLz85TJqymxtK",
+  rac: "price_1T97Gi6YXq3YLz85AwActkK1",
+  ful: "price_1T2b0E6YXq3YLz85MnLR9zhM"
 };
 
 exports.handler = async (event) => {
@@ -32,60 +20,61 @@ exports.handler = async (event) => {
     }
 
     const body = JSON.parse(event.body || "{}");
-    const productId = String(body.productId || "").trim();
     const installateur = String(body.installateur || "").trim();
+    const items = Array.isArray(body.items) ? body.items : [];
 
-    if (!productId || !installateur) {
+    if (!installateur) {
       return {
         statusCode: 400,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ error: "Paramètres manquants" })
+        body: JSON.stringify({ error: "Installateur manquant" })
       };
     }
 
-    const product = PRODUCTS[productId];
-
-    if (!product) {
+    if (!items.length) {
       return {
         statusCode: 400,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ error: "Produit Stripe inconnu" })
+        body: JSON.stringify({ error: "Panier vide" })
       };
     }
+
+    const line_items = items.map((item) => {
+      const code = String(item.code || "").trim();
+      const quantity = Math.max(1, Number(item.quantity || 1));
+      const price = PRICE_MAP[code];
+
+      if (!price) {
+        throw new Error("Produit inconnu : " + code);
+      }
+
+      return {
+        price: price,
+        quantity: quantity,
+        adjustable_quantity: {
+          enabled: true,
+          minimum: 1,
+          maximum: 50
+        }
+      };
+    });
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-
       allow_promotion_codes: true,
-
-      line_items: [
-        {
-          price_data: {
-            currency: "eur",
-            product: productId,
-            unit_amount: product.amount
-          },
-          quantity: 1
-        }
-      ],
-
+      line_items: line_items,
       success_url: "https://kva-solutions.netlify.app/?stripe=success",
       cancel_url: "https://kva-solutions.netlify.app/?stripe=cancel",
-
       metadata: {
-        installateur: installateur,
-        productId: productId,
-        productName: product.name
+        installateur: installateur
       }
     });
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: session.id
-      })
+      body: JSON.stringify({ id: session.id })
     };
   } catch (err) {
     return {
