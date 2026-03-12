@@ -2376,19 +2376,22 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0uuoTRqyevZ36
 
 const stripe = Stripe("pk_live_51T2TPa6YXq3YLz85npCpNICiFMqr2ev4RfUrW8IZam3qnRJh0yzsuGGsNa5hk4eCQQnWUTjTSQ7r0AbwCfOgDALc00qhirRXcA");
 
-async function callAppsScript(action,payload){
+async function callAppsScript(action, payload){
 
-  const res = await fetch(APPS_SCRIPT_URL,{
-    method:"POST",
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      action:action,
+  const res = await fetch("/.netlify/functions/apps-script-proxy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: action,
       ...payload
     })
   });
 
-  return await res.json();
+  if (!res.ok) {
+    throw new Error("Erreur HTTP " + res.status);
+  }
 
+  return await res.json();
 }
 
 async function checkCredits(){
