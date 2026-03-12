@@ -254,44 +254,44 @@ select{cursor:pointer}
       </div>
     </div>
 
-<div id="credit-store" class="alert" style="display:none;margin-top:18px">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-    <strong style="font-size:20px">Boutique crédits</strong>
-    <span style="opacity:.75">Choisissez les crédits à ajouter au panier</span>
+    <div id="credit-store" class="alert" style="display:none;margin-top:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <strong style="font-size:20px">Boutique crédits</strong>
+        <span style="opacity:.75">Choisissez les crédits à ajouter au panier</span>
+      </div>
+
+      <div style="margin-top:16px;display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:14px">
+        <button class="btn btn-p" type="button" onclick="addCreditToCart('urb')">Urbanisme</button>
+        <button class="btn btn-p" type="button" onclick="addCreditToCart('rac')">Raccordement</button>
+        <button class="btn btn-p" type="button" onclick="addCreditToCart('con')">Consuel</button>
+      </div>
+
+      <div style="margin-top:18px;display:flex;justify-content:center">
+        <button class="btn btn-p" type="button" onclick="addCreditToCart('ful')" style="width:min(100%,420px);height:88px;font-size:22px">
+          Dossier complet
+        </button>
+      </div>
+
+      <div id="credit-cart" style="display:none;margin-top:18px">
+        <strong>Panier</strong>
+        <div id="credit-cart-lines" style="margin-top:10px;display:flex;flex-direction:column;gap:10px"></div>
+
+        <div style="margin-top:16px;display:flex;justify-content:flex-end">
+          <button class="btn btn-p" type="button" onclick="checkoutCreditCart()">Payer le panier</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="credit-box" class="alert alert-warn" style="display:none;margin-top:18px">
+      <strong>Crédit insuffisant</strong><br>
+      Vous devez acheter un crédit pour continuer.
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-g" onclick="goStep(1)">← Retour</button>
+      <button class="btn btn-p" onclick="continueStep()">Continuer →</button>
+    </div>
   </div>
-
-  <div style="margin-top:16px;display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:14px">
-    <button class="btn btn-p" type="button" onclick="addCreditToCart('urb')">Urbanisme</button>
-    <button class="btn btn-p" type="button" onclick="addCreditToCart('rac')">Raccordement</button>
-    <button class="btn btn-p" type="button" onclick="addCreditToCart('con')">Consuel</button>
-  </div>
-
-  <div style="margin-top:18px;display:flex;justify-content:center">
-    <button class="btn btn-p" type="button" onclick="addCreditToCart('ful')" style="width:min(100%,420px);height:88px;font-size:22px">
-      Dossier complet
-    </button>
-  </div>
-
-  <div id="credit-cart" style="display:none;margin-top:18px">
-    <strong>Panier</strong>
-    <div id="credit-cart-lines" style="margin-top:10px;display:flex;flex-direction:column;gap:10px"></div>
-
-    <div style="margin-top:16px;display:flex;justify-content:flex-end">
-      <button class="btn btn-p" type="button" onclick="checkoutCreditCart()">Payer le panier</button>
-  </div>
-  </div>
-  
-<div id="credit-box" class="alert alert-warn" style="display:none;margin-top:18px">
-  <strong>Crédit insuffisant</strong><br>
-  Vous devez acheter un crédit pour continuer.
-</div>
-
-<div class="btn-row">
-  <button class="btn btn-g" onclick="goStep(1)">← Retour</button>
-  <button class="btn btn-p" onclick="continueStep()">Continuer →</button>
-</div>
-
-</div>
 </div>
 
 <!-- STEP 3 -->
