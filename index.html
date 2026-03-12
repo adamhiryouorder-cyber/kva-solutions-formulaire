@@ -279,8 +279,20 @@ select{cursor:pointer}
     <div style="margin-top:16px;display:flex;justify-content:flex-end">
       <button class="btn btn-p" type="button" onclick="checkoutCreditCart()">Payer le panier</button>
     </div>
-  </div>
+  <div id="credit-box" class="alert alert-warn" style="display:none;margin-top:18px">
+  <strong>Crédit insuffisant</strong><br>
+  Vous devez acheter un crédit pour continuer.
 </div>
+
+<div class="btn-row">
+  <button class="btn btn-g" onclick="goStep(1)">← Retour</button>
+  <button class="btn btn-p" onclick="continueStep()">Continuer →</button>
+</div>
+
+</div>
+</div>
+
+<!-- STEP 3 -->
   <!-- STEP 3 -->
   <div class="card" id="s3" style="display:none">
     <div class="ch">
