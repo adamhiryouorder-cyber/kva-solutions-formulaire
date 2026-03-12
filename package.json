@@ -5,6 +5,7 @@
     "@netlify/blobs": "^8.1.0",
     "@supabase/supabase-js": "^2.0.0",
     "busboy": "^1.6.0",
-    "cloudinary": "^1.41.3"
+    "cloudinary": "^1.41.3",
+    "stripe": "^14.0.0"
   }
 }
