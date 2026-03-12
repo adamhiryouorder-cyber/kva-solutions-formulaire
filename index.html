@@ -121,6 +121,7 @@ select{cursor:pointer}
 </style>
 <!-- EmailJS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
 <header>
@@ -226,7 +227,17 @@ select{cursor:pointer}
           <div class="sd">Urbanisme + Raccordement + Consuel</div>
         </div>
       </div>
-      <div class="btn-row">
+
+<div id="credit-box" class="alert alert-warn" style="display:none;margin-top:18px">
+  <strong>Crédit insuffisant</strong><br>
+  Vous devez acheter un crédit pour continuer.
+
+  <div style="margin-top:12px">
+    <button class="btn btn-p" onclick="continueStep()">Continuer &#8594;</button>
+  </div>
+</div>
+
+<div class="row">
         <button class="btn btn-g" onclick="goStep(1)">&#8592; Retour</button>
         <button class="btn btn-p" onclick="goStep(3)">Continuer &#8594;</button>
       </div>
@@ -2357,6 +2368,93 @@ prevFile = function(iid, aid, pid) {
   _origPrevFile(iid, aid, pid);
   setTimeout(updateProgress, 100);
 };
+
+
+// ===== SYSTEME CREDITS =====
+
+const APPS_SCRIPT_URL = "COLLER_ICI_URL_WEBAPP_APPS_SCRIPT";
+
+const stripe = Stripe("pk_live_51T2TPa6YXq3YLz85npCpNICiFMqr2ev4RfUrW8IZam3qnRJh0yzsuGGsNa5hk4eCQQnWUTjTSQ7r0AbwCfOgDALc00qhirRXcA");
+
+async function callAppsScript(action,payload){
+
+  const res = await fetch(APPS_SCRIPT_URL,{
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      action:action,
+      ...payload
+    })
+  });
+
+  return await res.json();
+
+}
+
+async function checkCredits(){
+
+  const installateur = document.getElementById("inst-nom").value;
+
+  const demarches = ST.svcs;
+
+  const res = await callAppsScript("checkCredits",{
+    installateur:installateur,
+    demarches:demarches
+  });
+
+  if(!res.enough){
+
+    document.getElementById("credit-box").style.display="block";
+
+    throw new Error("Crédit insuffisant");
+
+  }
+
+}
+
+async function continueStep(){
+
+  try{
+
+    await checkCredits();
+
+    goStep(3);
+
+  }
+
+  catch(e){
+
+    console.log(e);
+
+  }
+
+}
+
+async function buyCredit(){
+
+  const dem = ST.svcs[0];
+
+  let productId="";
+
+  if(dem==="urb") productId="prod_U7gIGmVomEZGc9";
+  if(dem==="rac") productId="prod_U7LytKQi8G3deM";
+  if(dem==="con") productId="prod_U7g0igbQ0OeQse";
+  if(dem==="ful") productId="prod_U0cEtMlFkfZpEj";
+
+  const res = await fetch("/.netlify/functions/create-checkout-session",{
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      productId:productId,
+      installateur:document.getElementById("inst-nom").value
+    })
+  });
+
+  const data = await res.json();
+
+  stripe.redirectToCheckout({sessionId:data.id});
+
+}
 
 </script>
 </body>
