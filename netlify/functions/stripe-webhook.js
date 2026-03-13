@@ -89,7 +89,7 @@ exports.handler = async (event) => {
   console.log("Crédits calculés :", credits);
 
   try {
-    const gasRes = await fetch(process.env.GAS_URL, {
+    const gasRes = await fetch(process.env.APPS_SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
