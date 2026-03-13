@@ -3160,6 +3160,12 @@ window.addEventListener('DOMContentLoaded', function() {
   document.getElementById('overlay').addEventListener('click', function(e) {
     if (e.target === document.getElementById('overlay')) closeModal();
   });
+  var paymentOverlay = document.getElementById('payment-overlay');
+  if (paymentOverlay) {
+    paymentOverlay.addEventListener('click', function(e) {
+      if (e.target === paymentOverlay) closePaymentModal();
+    });
+  }
   document.getElementById('search').addEventListener('input', renderTable);
   document.getElementById('f-statut').addEventListener('change', renderTable);
   document.getElementById('f-dem').addEventListener('change', renderTable);
@@ -3169,7 +3175,27 @@ window.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('th[data-col]').forEach(function(th) {
     th.addEventListener('click', function() { sortBy(th.dataset.col); });
   });
-  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeModal();
+      closePaymentModal();
+    }
+  });
+
+  var url = new URL(window.location.href);
+  var stripeStatus = url.searchParams.get('stripe');
+
+  if (stripeStatus === 'success' || stripeStatus === 'cancel') {
+    showSuiviPage();
+    openCreditShop();
+
+    setTimeout(function() {
+      showPaymentModal(stripeStatus);
+    }, 150);
+
+    url.searchParams.delete('stripe');
+    window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
+  }
 
   // Restaurer session
   try { var s = sessionStorage.getItem(SESSION_KEY); if (s) SESSION = JSON.parse(s); } catch(e) {}
@@ -3459,6 +3485,40 @@ function mdChip(label, checked, inDem) {
 function dRow(l, v) { return '<div class="d-row"><div class="d-lbl">'+l+'</div><div class="d-val">'+v+'</div></div>'; }
 function closeModal() { document.getElementById('overlay').classList.remove('open'); }
 
+function closePaymentModal() {
+  var el = document.getElementById('payment-overlay');
+  if (el) el.classList.remove('open');
+}
+
+function showPaymentModal(status) {
+  var overlay = document.getElementById('payment-overlay');
+  var badge = document.getElementById('payment-badge');
+  var title = document.getElementById('payment-title');
+  var body = document.getElementById('payment-body');
+
+  if (!overlay || !badge || !title || !body) return;
+
+  if (status === 'success') {
+    badge.textContent = 'Paiement réussi';
+    title.textContent = 'Paiement réussi';
+    body.innerHTML =
+      '<div class="alert alert-ok" style="margin:0">' +
+        '✅ Vos crédits seront ajoutés d’ici quelques minutes.' +
+      '</div>';
+  } else if (status === 'cancel') {
+    badge.textContent = 'Paiement échoué';
+    title.textContent = 'Paiement échoué';
+    body.innerHTML =
+      '<div class="alert alert-warn" style="margin:0">' +
+        '❌ Le paiement a échoué ou a été annulé. Veuillez vous rapprocher du support.' +
+      '</div>';
+  } else {
+    return;
+  }
+
+  overlay.classList.add('open');
+}
+
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function goToCreditShop() {
@@ -3557,5 +3617,18 @@ document.addEventListener('click', function(e) {
   installWrappers();
   setTimeout(installWrappers, 500);
 })();
-</script></body>
+</script>
+<div class="overlay" id="payment-overlay">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-badge" id="payment-badge">Paiement</div>
+        <h3 id="payment-title">Statut du paiement</h3>
+      </div>
+      <button class="modal-close" type="button" onclick="closePaymentModal()">✕</button>
+    </div>
+    <div class="modal-body" id="payment-body"></div>
+  </div>
+</div>
+</body>
 </html>
