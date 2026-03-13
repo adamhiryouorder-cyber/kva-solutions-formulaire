@@ -12,10 +12,12 @@ exports.handler = async (event) => {
   let stripeEvent;
 
   try {
+    console.log("Webhook secret présent =", !!process.env.STRIPE_WEBHOOK_SECRET);
     const sig =
       event.headers["stripe-signature"] || event.headers["Stripe-Signature"];
 
-    const rawBody = event.rawBody || event.body;
+    const rawBody = typeof event.body === "string" ? event.body : JSON.stringify(event.body);
+    console.log("Signature présente =", !!sig, "Body length =", rawBody.length);
 
     stripeEvent = stripe.webhooks.constructEvent(
       rawBody,
