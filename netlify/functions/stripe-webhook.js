@@ -36,11 +36,14 @@ exports.handler = async (event) => {
 
   const session = stripeEvent.data.object;
 
+  if (session.payment_status !== "paid") {
+    return { statusCode: 200, body: "not_paid" };
+  }
+
   console.log("Webhook reçu :", stripeEvent.id);
   console.log("Session :", session.id);
 
   const installateur = session.metadata?.installateur || "";
-
   const nomEntreprise =
     session.custom_fields?.find((f) => f.key === "nom_entreprise")?.text?.value || "";
 
@@ -57,17 +60,23 @@ exports.handler = async (event) => {
     };
   }
 
+  console.log("Installateur =", installateur);
+  console.log("Nom entreprise =", nomEntreprise);
+  console.log("Payment status =", session.payment_status);
+  console.log(
+    "Price IDs reçus =",
+    lineItems.data.map((item) => ({
+      description: item.description,
+      priceId: item.price?.id,
+      qty: item.quantity,
+    }))
+  );
+
   const credits = { urbanisme: 0, raccordement: 0, consuel: 0 };
 
   for (const item of lineItems.data) {
     const priceId = item.price?.id;
     const qty = item.quantity || 0;
-
-    console.log("Line item :", {
-      description: item.description,
-      priceId,
-      qty,
-    });
 
     if (priceId === PRICE_IDS.urbanisme) {
       credits.urbanisme += qty;
