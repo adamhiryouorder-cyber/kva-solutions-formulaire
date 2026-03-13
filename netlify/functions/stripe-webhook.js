@@ -1,7 +1,5 @@
 const Stripe = require("stripe");
-const stripe = new Stripe(
-  process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY
-);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const PRICE_IDS = {
   urbanisme: "price_1T9Qvz6YXq3YLz85GnRCLMGD",
