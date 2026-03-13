@@ -1,5 +1,4 @@
 const Stripe = require("stripe");
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const PRICE_MAP = {
@@ -43,32 +42,29 @@ exports.handler = async (event) => {
       const code = String(item.code || "").trim();
       const quantity = Math.max(1, Number(item.quantity || 1));
       const price = PRICE_MAP[code];
-
-      if (!price) {
-        throw new Error("Produit inconnu : " + code);
-      }
-
+      if (!price) throw new Error("Produit inconnu : " + code);
       return {
-        price: price,
-        quantity: quantity,
-        adjustable_quantity: {
-          enabled: true,
-          minimum: 1,
-          maximum: 50
-        }
+        price,
+        quantity,
+        adjustable_quantity: { enabled: true, minimum: 1, maximum: 50 }
       };
     });
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      payment_method_types: ["card"],
       allow_promotion_codes: true,
-      line_items: line_items,
+      custom_fields: [
+        {
+          key: "nom_entreprise",
+          label: { type: "custom", custom: "Nom de l'entreprise" },
+          type: "text",
+          optional: false
+        }
+      ],
+      line_items,
       success_url: "https://kva-solutions.netlify.app/?stripe=success",
-      cancel_url: "https://kva-solutions.netlify.app/?stripe=cancel",
-      metadata: {
-        installateur: installateur
-      }
+      cancel_url:  "https://kva-solutions.netlify.app/?stripe=cancel",
+      metadata: { installateur }
     });
 
     return {
@@ -76,14 +72,12 @@ exports.handler = async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: session.id })
     };
+
   } catch (err) {
     return {
       statusCode: 500,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        error: err.message || "Erreur serveur Stripe"
-      })
+      body: JSON.stringify({ error: err.message || "Erreur serveur Stripe" })
     };
   }
 };
-
