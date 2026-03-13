@@ -37,10 +37,10 @@ exports.handler = async (event) => {
   for (const item of lineItems.data) {
     const price = item.price.id;
     const qty   = item.quantity;
-    if (price === "price_1T9Qvz6YXq3YLz85GnRCLMGD") credits.urbanisme    += qty;
-    if (price === "price_1T97Gi6YXq3YLz85AwActkK1") credits.raccordement += qty;
-    if (price === "price_1T9QeO6YXq3YLz85TJqymxtK") credits.consuel      += qty;
-    if (price === "price_1T2b0E6YXq3YLz85MnLR9zhM") {
+    if (price === "price_1TAUW77tptk3qWWotDPNJ1vu") credits.urbanisme    += qty;
+    if (price === "price_1TAUW77tptk3qWWotDPNJ1vu") credits.raccordement += qty;
+    if (price === "price_1TAUW77tptk3qWWotDPNJ1vu") credits.consuel      += qty;
+    if (price === "price_1TAUW77tptk3qWWotDPNJ1vu") {
       credits.urbanisme    += qty;
       credits.raccordement += qty;
       credits.consuel      += qty;
