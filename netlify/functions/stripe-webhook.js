@@ -42,15 +42,22 @@ exports.handler = async (event) => {
 
   console.log("Webhook reçu :", stripeEvent.id);
   console.log("Session :", session.id);
+  console.log("Amount total :", session.amount_total);
 
   const installateur = session.metadata?.installateur || "";
+
   const nomEntreprise =
     session.custom_fields?.find((f) => f.key === "nom_entreprise")?.text?.value || "";
 
+  console.log("Installateur =", installateur);
+  console.log("Nom entreprise =", nomEntreprise);
+  console.log("Payment status =", session.payment_status);
+
   let lineItems;
+
   try {
     lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
-      expand: ["data.price"],
+      expand: ["data.price.product"],
     });
   } catch (err) {
     console.error("Erreur Stripe listLineItems :", err.message);
@@ -60,16 +67,9 @@ exports.handler = async (event) => {
     };
   }
 
-  console.log("Installateur =", installateur);
-  console.log("Nom entreprise =", nomEntreprise);
-  console.log("Payment status =", session.payment_status);
   console.log(
-    "Price IDs reçus =",
-    lineItems.data.map((item) => ({
-      description: item.description,
-      priceId: item.price?.id,
-      qty: item.quantity,
-    }))
+    "Line items Stripe =",
+    JSON.stringify(lineItems.data, null, 2)
   );
 
   const credits = { urbanisme: 0, raccordement: 0, consuel: 0 };
@@ -77,6 +77,12 @@ exports.handler = async (event) => {
   for (const item of lineItems.data) {
     const priceId = item.price?.id;
     const qty = item.quantity || 0;
+
+    console.log("Produit détecté :", {
+      description: item.description,
+      priceId: priceId,
+      qty: qty,
+    });
 
     if (priceId === PRICE_IDS.urbanisme) {
       credits.urbanisme += qty;
