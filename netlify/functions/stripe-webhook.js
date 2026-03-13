@@ -4,10 +4,10 @@ const stripe = new Stripe(
 );
 
 const PRICE_IDS = {
-  urbanisme: "price_URBANISME",
-  raccordement: "price_RACCORDEMENT",
-  consuel: "price_CONSUEL",
-  pack: "price_1TAUW77tptk3qWWotDPNJ1vu",
+  urbanisme: "price_1T9Qvz6YXq3YLz85GnRCLMGD",
+  raccordement: "price_1T97Gi6YXq3YLz85AwActkK1",
+  consuel: "price_1T9QeO6YXq3YLz85TJqymxtK",
+  pack: "price_1T2b0E6YXq3YLz85MnLR9zhM",
 };
 
 exports.handler = async (event) => {
