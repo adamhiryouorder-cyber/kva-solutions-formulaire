@@ -571,7 +571,7 @@ header{
 <div id="dashboard" style="display:none">
 <header>
 <div class="hd-logo-wrap" style="background:transparent;box-shadow:none;padding:0">
-<img alt="KVA Solutions" class="hd-logo" src="LOGO_KVA_LOW_REZ.png"/>
+<img alt="KVA Solutions" class="hd-logo" id="suivi-logo" src="LOGO_KVA_LOW_REZ.png"/>
 </div>
 <div class="hd-right">
 <button class="btn-new-dem" onclick="showFormPage()" type="button">＋ Nouvelle démarche</button>
@@ -844,8 +844,12 @@ function updateSvcVisual() {
 }
 
 // ── Navigation
-function goStep(n) {
-  if (n === 2) {
+function goStep(n, opts) {
+  opts = opts || {};
+  var skipValidation = !!opts.skipValidation;
+  var historyMode = opts.historyMode || 'push';
+
+  if (!skipValidation && n === 2) {
     var instNom = document.getElementById('inst-nom')
       ? document.getElementById('inst-nom').value.trim()
       : '';
@@ -872,7 +876,7 @@ function goStep(n) {
     }
   }
 
-  if (n === 3 && ST.svcs.length === 0) {
+  if (!skipValidation && n === 3 && ST.svcs.length === 0) {
     alert("Sélectionnez au moins un service.");
     return;
   }
@@ -881,7 +885,7 @@ function goStep(n) {
     buildForm();
   }
 
-  if (n === 4) {
+  if (!skipValidation && n === 4) {
     var missing = validateRequired();
     if (missing.length > 0) {
       highlightMissing();
@@ -906,18 +910,19 @@ function goStep(n) {
 
   updateProgress();
 
-if (n === 2) {
+  if (n === 2) {
+    var creditBox = document.getElementById('credit-box');
+    if (creditBox) creditBox.style.display = 'none';
 
-  var creditBox = document.getElementById('credit-box');
-  if (creditBox) creditBox.style.display = 'none';
+    var creditStore = document.getElementById('credit-store');
+    if (creditStore) creditStore.style.display = 'none';
 
-  var creditStore = document.getElementById('credit-store');
-  if (creditStore) creditStore.style.display = 'none';
+    refreshCreditStock().catch(function(err) {
+      console.error('refreshCreditStock error:', err);
+    });
+  }
 
-  refreshCreditStock().catch(function(err) {
-    console.error('refreshCreditStock error:', err);
-  });
- }
+  updateAppUrl(historyMode);
 }
 
 function urbConsentHTML(svcType, withUrb) {
@@ -2968,7 +2973,96 @@ async function continueStep(){
 
 
 // ══ PAGE NAVIGATION ══════════════════════════════
-function showSuiviPage() {
+var ROUTES = {
+  signin: '/signin',
+  suivi: '/suivi',
+  shop: '/shop',
+  form: '/formulaire'
+};
+
+function normalizeRoutePath(path) {
+  if (!path) return '/';
+  path = String(path).replace(/^[a-z]+:\/\/[^/]+/i, '');
+  if (!path.startsWith('/')) path = '/' + path;
+  path = path.replace(/\/+/g, '/');
+  if (path.length > 1) path = path.replace(/\/+$/, '');
+  return path || '/';
+}
+
+function getCurrentFormStep() {
+  var visibleStep = 1;
+  ['s1','s2','s3','s4','s5'].forEach(function(id, i) {
+    var el = document.getElementById(id);
+    if (el && el.style.display !== 'none') visibleStep = Math.min(i + 1, 4);
+  });
+  return visibleStep;
+}
+
+function getAppPath() {
+  var formPage = document.getElementById('page-form');
+  var suiviPage = document.getElementById('page-suivi');
+  var shopPage = document.getElementById('credit-shop-page');
+  var dashboard = document.getElementById('dashboard');
+  var loginScreen = document.getElementById('login-screen');
+
+  var isFormVisible = formPage && getComputedStyle(formPage).display !== 'none';
+  var isSuiviVisible = suiviPage && getComputedStyle(suiviPage).display !== 'none';
+  var isShopVisible = shopPage && shopPage.classList.contains('show');
+  var isDashboardVisible = dashboard && getComputedStyle(dashboard).display !== 'none';
+  var isLoginVisible = loginScreen && getComputedStyle(loginScreen).display !== 'none';
+
+  if (isFormVisible) return ROUTES.form + getCurrentFormStep();
+  if (isShopVisible) return ROUTES.shop;
+  if (isSuiviVisible && isDashboardVisible) return ROUTES.suivi;
+  if (isSuiviVisible && isLoginVisible) return ROUTES.signin;
+  return window.location.pathname || ROUTES.signin;
+}
+
+function updateAppUrl(mode) {
+  var targetPath = normalizeRoutePath(getAppPath());
+  var currentPath = normalizeRoutePath(window.location.pathname);
+  if (targetPath === currentPath) return;
+  var fn = mode === 'replace' ? 'replaceState' : 'pushState';
+  window.history[fn]({ path: targetPath }, document.title, targetPath);
+}
+
+function applyRouteFromPath(path, options) {
+  options = options || {};
+  var normalized = normalizeRoutePath(path || window.location.pathname);
+  var match = normalized.match(/^\/formulaire(\d+)$/);
+
+  if (normalized === ROUTES.shop) {
+    showSuiviPage(options.historyMode || 'replace');
+    if (SESSION) openCreditShop(options.historyMode || 'replace');
+    return;
+  }
+
+  if (normalized === ROUTES.suivi) {
+    showSuiviPage(options.historyMode || 'replace');
+    return;
+  }
+
+  if (normalized === ROUTES.signin) {
+    showSuiviPage(options.historyMode || 'replace');
+    if (SESSION) showDashboard(options.historyMode || 'replace');
+    return;
+  }
+
+  if (match) {
+    showFormPage(options.historyMode || 'replace');
+    var step = Math.max(1, Math.min(4, Number(match[1] || 1)));
+    goStep(step, { skipValidation: true, historyMode: options.historyMode || 'replace' });
+    return;
+  }
+
+  if (options.fallbackToCurrent !== false) updateAppUrl(options.historyMode || 'replace');
+}
+
+window.addEventListener('popstate', function() {
+  applyRouteFromPath(window.location.pathname, { historyMode: 'replace', fallbackToCurrent: false });
+});
+
+function showSuiviPage(historyMode) {
   document.getElementById('page-form').style.display  = 'none';
   document.getElementById('page-suivi').style.display = 'block';
   if (SESSION) {
@@ -2979,14 +3073,17 @@ function showSuiviPage() {
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('dashboard').style.display    = 'none';
   }
+  closeCreditShop('replace');
   window.scrollTo(0, 0);
+  updateAppUrl(historyMode || 'push');
 }
 
-function showFormPage() {
+function showFormPage(historyMode) {
   document.getElementById('page-suivi').style.display = 'none';
   document.getElementById('page-form').style.display  = 'block';
   syncInstallateurField();
   window.scrollTo(0, 0);
+  updateAppUrl(historyMode || 'push');
 }
 
 
@@ -3061,7 +3158,7 @@ async function refreshCreditStockHeader(){
   }
 }
 
-function openCreditShop(){
+function openCreditShop(historyMode){
   var page = document.getElementById('credit-shop-page');
   var main = document.getElementById('dashboard-main');
   if (page) page.classList.add('show');
@@ -3069,15 +3166,17 @@ function openCreditShop(){
   window.scrollTo({ top: 0, behavior: 'smooth' });
   refreshCreditStockHeader();
   renderCreditCart();
+  updateAppUrl(historyMode || 'push');
 }
 
-function closeCreditShop(){
+function closeCreditShop(historyMode){
   var page = document.getElementById('credit-shop-page');
   var main = document.getElementById('dashboard-main');
   if (page) page.classList.remove('show');
   if (main) main.style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
   refreshCreditStockHeader();
+  updateAppUrl(historyMode || 'push');
 }
 
 function changeShopQty(code, delta){
@@ -3153,6 +3252,12 @@ async function checkoutCreditCart(){
 
 // ══ INIT ════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', function() {
+  ['hlogo','login-logo','suivi-logo'].forEach(function(id) {
+    var img = document.getElementById(id);
+    if (img) img.src = 'LOGO_KVA_LOW_REZ.png';
+  });
+  var favicon = document.getElementById('app-favicon');
+  if (favicon) favicon.href = 'LOGO_KVA_LOW_REZ.png';
   // Boutons via addEventListener (pas de onclick inline — évite tous les bugs d'échappement)
   document.getElementById('btn-login').addEventListener('click', doLogin);
   document.getElementById('btn-logout').addEventListener('click', doLogout);
@@ -3199,7 +3304,8 @@ window.addEventListener('DOMContentLoaded', function() {
 
   // Restaurer session
   try { var s = sessionStorage.getItem(SESSION_KEY); if (s) SESSION = JSON.parse(s); } catch(e) {}
-  if (SESSION) { syncInstallateurField(); showDashboard(); fetchDossiers(); }
+  if (SESSION) { syncInstallateurField(); showDashboard('replace'); fetchDossiers(); }
+  applyRouteFromPath(window.location.pathname, { historyMode: 'replace' });
 });
 
 // ══ SHA-256 ══════════════════════════════════════════
@@ -3240,7 +3346,7 @@ async function doLogin() {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(SESSION));
       syncInstallateurField();
       loadData(data.dossiers || []);
-      showDashboard();
+      showDashboard('push');
       updateKPIs();
       renderTable();
       refreshCreditStockHeader();
@@ -3302,7 +3408,7 @@ function loadData(dossiers) {
 }
 
 // ══ NAV ══════════════════════════════════════════════
-function showDashboard() {
+function showDashboard(historyMode) {
   syncInstallateurField();
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('dashboard').style.display    = 'block';
@@ -3311,6 +3417,7 @@ function showDashboard() {
   document.getElementById('user-name').textContent = n;
   document.getElementById('user-ico').textContent  = n.charAt(0).toUpperCase();
   refreshCreditStockHeader();
+  updateAppUrl(historyMode || 'push');
 }
 function doLogout() {
   SESSION = null; sessionStorage.removeItem(SESSION_KEY); allRows = []; filtered = [];
@@ -3321,7 +3428,7 @@ function doLogout() {
   // keep page-suivi visible so login shows
   document.getElementById('inp-pw').value = '';
   hideErr();
-  closeCreditShop();
+  closeCreditShop('replace');
   creditCart = [];
   shopQty = { urb: 0, rac: 0, con: 0, ful: 0 };
   renderCreditCart();
@@ -3522,8 +3629,8 @@ function showPaymentModal(status) {
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function goToCreditShop() {
-  showSuiviPage();
-  setTimeout(openCreditShop, 150);
+  showSuiviPage('replace');
+  setTimeout(function(){ openCreditShop('push'); }, 150);
 }
 
 function toggleCreditDropdown(e) {
