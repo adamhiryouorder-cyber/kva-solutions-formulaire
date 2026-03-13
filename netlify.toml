@@ -5,3 +5,8 @@
 [[blobs]]
   name = "kva-pdfs"
   access = "public"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
