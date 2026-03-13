@@ -1,11 +1,11 @@
 const Stripe = require("stripe");
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const PRICE_MAP = {
-  urb: "price_1TAUW77tptk3qWWotDPNJ1vu",
-  con: "price_1TAUW77tptk3qWWotDPNJ1vu",
-  rac: "price_1TAUW77tptk3qWWotDPNJ1vu",
-  ful: "price_1TAUW77tptk3qWWotDPNJ1vu"
+  urb: "price_1T9Qvz6YXq3YLz85GnRCLMGD",
+  con: "price_1T9QeO6YXq3YLz85TJqymxtK",
+  rac: "price_1T97Gi6YXq3YLz85AwActkK1",
+  ful: "price_1T2b0E6YXq3YLz85MnLR9zhM"
 };
 
 exports.handler = async (event) => {
@@ -81,5 +81,6 @@ exports.handler = async (event) => {
     };
   }
 };
+
 
 
