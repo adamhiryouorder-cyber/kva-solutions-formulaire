@@ -7,6 +7,16 @@
   access = "public"
 
 [[redirects]]
-  from = "/*"
+  from = "/signin"
   to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/signin/"
+  to = "/signin"
+  status = 301
+
+[[redirects]]
+  from = "/*"
+  to = "/site.html"
   status = 200
