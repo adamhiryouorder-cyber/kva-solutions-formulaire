@@ -10,13 +10,22 @@
   from = "/signin"
   to = "/index.html"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/signin/"
   to = "/signin"
   status = 301
+  force = true
+
+[[redirects]]
+  from = "/"
+  to = "/site.html"
+  status = 200
+  force = true
 
 [[redirects]]
   from = "/*"
   to = "/site.html"
   status = 200
+  force = true
