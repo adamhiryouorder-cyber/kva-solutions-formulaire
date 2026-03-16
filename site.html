@@ -735,7 +735,7 @@ Je veux gagner des marchés
             <div class="cta-form-card">
               <h3>Demande d'informations</h3>
               <p>Choisissez le sujet de votre demande pour que nous puissions vous orienter plus rapidement.</p>
-              <form id="contact-form" class="cta-form" action="mailto:contact@kva-be.com" method="post" enctype="text/plain">
+              <form id="contact-form" class="cta-form">
                 <div>
                   <label for="contact-name">Nom</label>
                   <input id="contact-name" name="Nom" type="text" placeholder="Votre nom" required>
@@ -824,21 +824,54 @@ document.querySelectorAll("a[href^=\"#\"]").forEach(a => {
 });
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
 <script>
+(function(){
+  emailjs.init({
+    publicKey: "G72t_yLOIID-VwTOM"
+  });
+})();
+
 document.querySelectorAll('.js-contact-cta').forEach(function(button){
   button.addEventListener('click', function(){
     var subject = this.getAttribute('data-subject');
     var message = this.getAttribute('data-message');
     var subjectField = document.getElementById('contact-subject');
     var messageField = document.getElementById('contact-message');
+
     if(subjectField && subject){
       subjectField.value = subject;
     }
+
     if(messageField && message && !messageField.value.trim()){
       messageField.value = message;
     }
   });
 });
+
+/* ENVOI DU FORMULAIRE AVEC EMAILJS */
+
+var contactForm = document.getElementById('contact-form');
+
+if(contactForm){
+  contactForm.addEventListener('submit', function(e){
+    e.preventDefault();
+
+    emailjs.send("service_a25nwof", "template_6cua9cg", {
+      name: document.getElementById('contact-name').value,
+      email: document.getElementById('contact-email').value,
+      subject: document.getElementById('contact-subject').value,
+      message: document.getElementById('contact-message').value
+    })
+    .then(function(){
+      alert("Votre demande a bien été envoyée.");
+      contactForm.reset();
+    })
+    .catch(function(error){
+      console.error("Erreur EmailJS :", error);
+      alert("Une erreur est survenue lors de l'envoi.");
+    });
+  });
+}
 </script>
-</body>
-</html>
