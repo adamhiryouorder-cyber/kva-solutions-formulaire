@@ -758,7 +758,11 @@ Je veux gagner des marchés
                   <label for="contact-message">Message</label>
                   <textarea id="contact-message" name="Message" placeholder="Décrivez brièvement votre besoin"></textarea>
                 </div>
-                <button type="submit">Envoyer la demande</button>
+                <button id="submit-btn" type="submit" class="btn-primary">Envoyer la demande</button>
+
+<div id="form-success" style="display:none; margin-top:15px; color:#22c55e; font-weight:600;">
+✓ Votre demande a bien été envoyée. Nous vous répondrons rapidement.
+</div>
               </form>
             </div>
           </div>
@@ -865,9 +869,21 @@ if(contactForm){
       message: document.getElementById('contact-message').value
     })
     .then(function(){
-      alert("Votre demande a bien été envoyée.");
-      contactForm.reset();
-    })
+
+  contactForm.reset();
+
+  var btn = document.getElementById("submit-btn");
+  var success = document.getElementById("form-success");
+
+  if(btn){
+    btn.style.display = "none";
+  }
+
+  if(success){
+    success.style.display = "block";
+  }
+
+})
     .catch(function(error){
       console.error("Erreur EmailJS :", error);
       alert("Une erreur est survenue lors de l'envoi.");
