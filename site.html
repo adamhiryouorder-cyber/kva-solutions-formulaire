@@ -737,9 +737,13 @@ Je veux gagner des marchés
               <p>Choisissez le sujet de votre demande pour que nous puissions vous orienter plus rapidement.</p>
               <form id="contact-form" class="cta-form">
                 <div>
-                  <label for="contact-name">Nom</label>
-                  <input id="contact-name" name="Nom" type="text" placeholder="Votre nom" required>
+                  <label for="contact-name">Nom / Entreprise</label>
+                  <input id="contact-name" type="text" name="name" placeholder="Nom ou entreprise" required>
                 </div>
+		<div class="form-group">
+<label for="contact-phone">Téléphone</label>
+<input id="contact-phone" type="tel" name="phone" placeholder="Votre numéro de téléphone" required>
+</div>
                 <div>
                   <label for="contact-email">E-mail</label>
                   <input id="contact-email" name="Email" type="email" placeholder="Votre e-mail" required>
@@ -862,12 +866,13 @@ if(contactForm){
   contactForm.addEventListener('submit', function(e){
     e.preventDefault();
 
-    emailjs.send("service_a25nwof", "template_6cua9cg", {
-      name: document.getElementById('contact-name').value,
-      email: document.getElementById('contact-email').value,
-      subject: document.getElementById('contact-subject').value,
-      message: document.getElementById('contact-message').value
-    })
+    emailjs.send("service_xxxxx", "template_6cua9cg", {
+  name: document.getElementById('contact-name').value,
+  phone: document.getElementById('contact-phone').value,
+  email: document.getElementById('contact-email').value,
+  subject: document.getElementById('contact-subject').value,
+  message: document.getElementById('contact-message').value
+})
     .then(function(){
 
   contactForm.reset();
