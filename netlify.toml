@@ -7,6 +7,11 @@
   access = "public"
 
 [[redirects]]
+  from = "/favicon.png"
+  to = "/favicon.png"
+  status = 200
+
+[[redirects]]
   from = "/kva-intro-loop.mp4"
   to = "/kva-intro-loop.mp4"
   status = 200
