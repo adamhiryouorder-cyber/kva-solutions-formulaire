@@ -1,6 +1,6 @@
 exports.handler = async (event) => {
   try {
-    if (event.httpMethod !== "POST") {
+    if (!["GET", "POST"].includes(event.httpMethod)) {
       return {
         statusCode: 405,
         headers: { "Content-Type": "application/json" },
@@ -17,20 +17,33 @@ exports.handler = async (event) => {
       };
     }
 
-    const body = JSON.parse(event.body || "{}");
+    let response;
 
-    const response = await fetch(APPS_SCRIPT_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8"
-      },
-      body: JSON.stringify(body)
-    });
+    if (event.httpMethod === "GET") {
+      const qs = new URLSearchParams(event.queryStringParameters || {}).toString();
+      const url = qs ? `${APPS_SCRIPT_URL}?${qs}` : APPS_SCRIPT_URL;
+
+      response = await fetch(url, {
+        method: "GET",
+        redirect: "follow"
+      });
+    } else {
+      const body = JSON.parse(event.body || "{}");
+
+      response = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify(body),
+        redirect: "follow"
+      });
+    }
 
     const text = await response.text();
 
     return {
-      statusCode: 200,
+      statusCode: response.status,
       headers: { "Content-Type": "application/json" },
       body: text
     };
