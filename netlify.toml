@@ -16,6 +16,8 @@
   to = "/kva-intro-loop.mp4"
   status = 200
 
+# ===== APP (espace installateur) =====
+
 [[redirects]]
   from = "/signin"
   to = "/index.html"
@@ -27,6 +29,32 @@
   to = "/signin"
   status = 301
   force = true
+
+[[redirects]]
+  from = "/suivi"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/shop"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/formulaire"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/formulaire/*"
+  to = "/index.html"
+  status = 200
+  force = true
+
+# ===== SITE VITRINE =====
 
 [[redirects]]
   from = "/"
