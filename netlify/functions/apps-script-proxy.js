@@ -24,22 +24,15 @@ exports.handler = async (event) => {
       headers: {
         "Content-Type": "text/plain;charset=utf-8"
       },
-      body: JSON.stringify(body),
-      redirect: "follow"
+      body: JSON.stringify(body)
     });
 
     const text = await response.text();
-    const contentType = response.headers.get("content-type") || "";
 
     return {
-      statusCode: response.ok ? 200 : 502,
+      statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        success: false,
-        upstreamStatus: response.status,
-        upstreamContentType: contentType,
-        upstreamBodyStart: text.slice(0, 500)
-      })
+      body: text
     };
   } catch (err) {
     return {
