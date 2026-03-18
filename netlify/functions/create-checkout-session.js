@@ -62,8 +62,8 @@ exports.handler = async (event) => {
         }
       ],
       line_items,
-      success_url: "https://kva-solutions.netlify.app/?stripe=success",
-      cancel_url:  "https://kva-solutions.netlify.app/?stripe=cancel",
+      success_url: "https://kva-be.com/suivi?stripe=success",
+      cancel_url:  "https://kva-be.com/shop?stripe=cancel",
       metadata: { installateur }
     });
 
@@ -81,6 +81,3 @@ exports.handler = async (event) => {
     };
   }
 };
-
-
-
