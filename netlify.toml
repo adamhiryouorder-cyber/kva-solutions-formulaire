@@ -6,17 +6,6 @@
   name = "kva-pdfs"
   access = "public"
 
-# 🔥 IMPORTANT (à ajouter)
-[[redirects]]
-  from = "/.netlify/functions/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
-[[redirects]]
-  from = "/sitemap.xml"
-  to = "/sitemap.xml"
-  status = 200
-
 [[redirects]]
   from = "/favicon.png"
   to = "/favicon.png"
