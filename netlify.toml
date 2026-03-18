@@ -7,11 +7,6 @@
   access = "public"
 
 [[redirects]]
-  from = "/sitemap.xml"
-  to = "/sitemap.xml"
-  status = 200
-
-[[redirects]]
   from = "/favicon.png"
   to = "/favicon.png"
   status = 200
