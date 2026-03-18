@@ -24,13 +24,29 @@ exports.handler = async (event) => {
       headers: {
         "Content-Type": "text/plain;charset=utf-8"
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      redirect: "follow"
     });
 
     const text = await response.text();
+    const contentType = response.headers.get("content-type") || "";
+
+    if (!contentType.includes("application/json")) {
+      return {
+        statusCode: 502,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          success: false,
+          error: "Réponse non JSON reçue depuis Apps Script",
+          upstreamStatus: response.status,
+          upstreamContentType: contentType,
+          upstreamBodyStart: text.slice(0, 300)
+        })
+      };
+    }
 
     return {
-      statusCode: 200,
+      statusCode: response.status,
       headers: { "Content-Type": "application/json" },
       body: text
     };
