@@ -4,7 +4,10 @@ exports.handler = async (event) => {
       return {
         statusCode: 405,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ success: false, error: "Méthode non autorisée" })
+        body: JSON.stringify({
+          success: false,
+          error: "Méthode non autorisée"
+        })
       };
     }
 
@@ -13,24 +16,46 @@ exports.handler = async (event) => {
       return {
         statusCode: 500,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ success: false, error: "APPS_SCRIPT_URL manquante" })
+        body: JSON.stringify({
+          success: false,
+          error: "APPS_SCRIPT_URL manquante"
+        })
       };
     }
 
     const body = JSON.parse(event.body || "{}");
 
+    const params = new URLSearchParams();
+    params.append("payload", JSON.stringify(body));
+
     const response = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
       headers: {
-        "Content-Type": "text/plain;charset=utf-8"
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
       },
-      body: JSON.stringify(body)
+      body: params.toString(),
+      redirect: "follow"
     });
 
     const text = await response.text();
+    const contentType = response.headers.get("content-type") || "";
+
+    if (!contentType.toLowerCase().includes("application/json")) {
+      return {
+        statusCode: 502,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          success: false,
+          error: "Réponse non JSON reçue depuis Apps Script",
+          upstreamStatus: response.status,
+          upstreamContentType: contentType,
+          upstreamBodyStart: text.slice(0, 300)
+        })
+      };
+    }
 
     return {
-      statusCode: 200,
+      statusCode: response.ok ? 200 : 502,
       headers: { "Content-Type": "application/json" },
       body: text
     };
